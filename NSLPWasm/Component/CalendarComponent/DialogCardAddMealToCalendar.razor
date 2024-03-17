@@ -1,0 +1,160 @@
+﻿@using NSLPWasm.Dto
+@using NSLPWasm.Services.RecipeService
+@inject DialogService DialogService
+@inject IMenuTypeService _menuTypeService
+@inject IIngredientService _ingService
+@inject IRecipeService _recipeService
+@inject IMenuService _menuService
+@inject IMenuToIngredientOrRecipeService _mtiService
+@inject ILocalStorageManager _localstorage
+@inject NotificationService NotificationService
+@inject NavigationManager Navigation
+
+@if (isLoading == true)
+{
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.Center" Wrap="FlexWrap.Wrap" Class="rz-m-12" Gap="2rem">
+        <RadzenProgressBarCircular ShowValue="isLoading" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Large" Visible="isLoading">
+            <Template>Wait</Template>
+        </RadzenProgressBarCircular>
+    </RadzenStack>
+}
+else
+{
+    <RadzenTabs TabPosition="@tabPosition" RenderMode="TabRenderMode.Client">
+        <Tabs>
+            <RadzenTabsItem Text="Breakfast">
+                <RadzenTemplateForm Data="@bfmenu" Submit="@(async(MenuDto args) => {await BFSubmit(args); })" InvalidSubmit=@OnInvalidSubmit>
+
+                    <BfMTIORComponent bfmtiors="BfMTIOR" />
+
+                    <div class="row justify-content-center">
+                        <div class="col-md-12 d-flex align-items-end justify-content-center" style="margin-top: 16px;">
+                            <RadzenButton ButtonType="ButtonType.Submit" Icon="save" Text="Save" style="margin-right: 20px;width:170px" />
+                        </div>
+                    </div>
+                </RadzenTemplateForm>
+            </RadzenTabsItem>
+
+            <RadzenTabsItem Text="Lunch">
+                <RadzenTemplateForm Data="@lunchmenu" Submit="@(async(MenuDto args) => {await LunchSubmit(args); })" InvalidSubmit=@OnInvalidSubmit>
+
+                    <LunchMTIORComponent lunchmtiors="LunchMTIOR" />
+
+                    <div class="row justify-content-center">
+                        <div class="col-md-12 d-flex align-items-end justify-content-center" style="margin-top: 16px;">
+                            <RadzenButton ButtonType="ButtonType.Submit" Icon="save" Text="Save" style="margin-right: 20px;width:170px" />
+                        </div>
+                    </div>
+                </RadzenTemplateForm>
+            </RadzenTabsItem>
+        </Tabs>
+    </RadzenTabs>
+}
+
+
+@code {
+    TabPosition tabPosition = TabPosition.Top;
+    void OnChange(int index)
+    {
+        //console.Log($"Tab with index {index} was selected.");
+    }
+    bool busy;
+    bool isLoading = false;
+
+    [Parameter]
+    public DateTime DateAssigned { get; set; }
+
+    [Parameter]
+    public int MenuTypeId { get; set; }
+
+    [Parameter]
+    public string MenuTypeName { get; set; }
+
+    int menuTypeId;
+    DateTime menuDate;
+
+    List<MenuToIngredientOrRecipeDto> BfMTIOR;
+    List<MenuToIngredientOrRecipeDto> LunchMTIOR;
+    MenuDto bfmenu = new MenuDto();
+    MenuDto lunchmenu = new MenuDto();
+
+    protected override void OnParametersSet()
+    {
+        menuDate = DateAssigned;
+        menuTypeId = MenuTypeId;
+    }
+
+    protected async override Task OnInitializedAsync()
+    {
+        bfmenu.MenuTypeId = 1;
+        lunchmenu.MenuTypeId = 2;
+
+        bfmenu.MenuDate = DateAssigned;
+        lunchmenu.MenuDate = DateAssigned;
+
+        BfMTIOR = new List<MenuToIngredientOrRecipeDto>();
+        LunchMTIOR = new List<MenuToIngredientOrRecipeDto>();
+    }
+
+    void OnInvalidSubmit(FormInvalidSubmitEventArgs args)
+    {
+        //console.Log($"InvalidSubmit: {JsonSerializer.Serialize(args, new JsonSerializerOptions() { WriteIndented = true })}");
+    }
+
+    async Task BFSubmit(MenuDto arg)
+    {
+        isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            bfmenu = new MenuDto { MenuDate = DateAssigned, MenuTypeId = 1 };
+            arg.MenuToIngredientOrRecipes = BfMTIOR;
+            await _menuService.AddMenu(arg);
+            ShowNotification(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Successfully added!", Duration = 4000 });
+            StateHasChanged();
+            Navigation.NavigateTo("/", forceLoad: true);
+        }
+        catch(Exception e)
+        {
+            ShowNotification(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error While Saving!", Duration = 4000 });
+            Console.WriteLine(e.Message);
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    async Task LunchSubmit(MenuDto arg)
+    {
+        isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            lunchmenu = new MenuDto { MenuDate = DateAssigned, MenuTypeId = 2 };
+            arg.MenuToIngredientOrRecipes = LunchMTIOR;
+            await _menuService.AddMenu(arg);
+            ShowNotification(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Successfully added!", Duration = 4000 });
+            StateHasChanged();
+            Navigation.NavigateTo("/", forceLoad: true);
+        }
+        catch (Exception e)
+        {
+            ShowNotification(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error While Saving!", Duration = 4000 });
+            Console.WriteLine(e.Message);
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    void ShowNotification(NotificationMessage message)
+    {
+        NotificationService.Notify(message);
+    }
+}

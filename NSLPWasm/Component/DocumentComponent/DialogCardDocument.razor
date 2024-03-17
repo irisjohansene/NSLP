@@ -1,0 +1,23 @@
+﻿@page "/docs/{DocumentID}"
+@inject Radzen.DialogService dialogService
+@using NSLPWasm.Dto
+@using NSLPWasm.MVVM
+@inject IIngredientService _ingredientService
+@inject IRecipeToIngredientService _rtiService
+@inject HttpClient _http
+
+<div id="printDocument" style="background-color:rgba(51, 189, 204, 0);height:100vh;z-index:2;top:1.9em;">
+    <iframe id="printFrame" src="@_url" frameborder="0" oncontextmenu="return false" scrolling="no" onload="window.parent.scrollTo(0, 0);" style="width:100%;height:100%" />
+</div>
+
+@code {
+
+    [Parameter] public int DocumentID { get; set; }
+    string _url = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Task.Delay(1);
+        _url = "https://www.cn.nysed.gov/sites/cn/files/Vegetable%20Subgroups.pdf";
+    }
+}

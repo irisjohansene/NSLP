@@ -1,0 +1,229 @@
+﻿@page "/purchasing/{OrderID}"
+@inject Radzen.DialogService dialogService
+@using NSLPWasm.Dto
+@using NSLPWasm.MVVM
+@inject IIngredientService _orderdetailService
+@inject IRecipeToIngredientService _rtiService
+
+<RadzenText TextStyle="TextStyle.H6">Order Form</RadzenText>
+
+<RadzenFieldset Text="Order Detail">
+    <RadzenStack Gap="1rem">
+        <RadzenRow AlignItems="AlignItems.Center">
+            <RadzenColumn Size="12" SizeMD="3">
+                <RadzenLabel Text="OrderId" Component="OrderId" />
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="3">
+                <RadzenTextBox Style="width: 100%;" Name="OrderId" />
+            </RadzenColumn>
+        </RadzenRow>
+    </RadzenStack>
+</RadzenFieldset>
+
+<br />
+<br />
+
+<RadzenButton ButtonStyle="ButtonStyle.Success" Icon="add_circle_outline" class="mt-2 mb-2" Text="Add OrderDetail" Click="@InsertRow" Disabled=@(orderdetailToInsert != null || orderdetailToUpdate != null) />
+<RadzenDataGrid @ref="orderdetailsGrid" AllowAlternatingRows="false" AllowFiltering="false" AllowPaging="true" PageSize="5" AllowSorting="false" EditMode="DataGridEditMode.Single"
+                Data="@orderdetails" TItem="OrderDetailDto" RowUpdate="@OnUpdateRow" RowCreate="@OnCreateRow" ColumnWidth="200px">
+    <Columns>
+        <RadzenDataGridColumn TItem="OrderDetailDto" Property="OrderDetailId" Title="Order Detail ID" />
+        <RadzenDataGridColumn TItem="OrderDetailDto" Property="OrderId" Title="Order ID" />
+        <RadzenDataGridColumn TItem="OrderDetailDto" Property="VendorId" Title="Vendor ID" />
+
+        <RadzenDataGridColumn TItem="OrderDetailDto" Property="Ingredient.Name" Title="Ingredient" Width="280px">
+            <EditTemplate Context="orderdetail">
+                <RadzenDropDown @bind-Value="orderdetail.OrderDetailId" Data="@orderdetailIE" TextProperty="Name" ValueProperty="IngredientId" Style="width:100%; display: block;" />
+            </EditTemplate>
+        </RadzenDataGridColumn>
+
+        <RadzenDataGridColumn TItem="OrderDetailDto" Property="Amount" Title="Amount">
+            <Template Context="orderdetail">
+                @String.Format(new System.Globalization.CultureInfo("en-US"), "{0:C}", orderdetail.Amount)
+            </Template>
+            <EditTemplate Context="orderdetail">
+                <RadzenNumeric @bind-Value="orderdetail.Amount" Style="width:100%" />
+            </EditTemplate>
+        </RadzenDataGridColumn>
+
+        <RadzenDataGridColumn TItem="OrderDetailDto" Property="MeasurementId" Title="Measurement ID" />
+        <RadzenDataGridColumn TItem="OrderDetailDto" Property="Ordered" Title="Ordered">
+            <EditTemplate Context="orderdetail">
+                <RadzenCheckBox @bind-Value=orderdetail.Ordered Name="Ordered" />
+            </EditTemplate>
+        </RadzenDataGridColumn>
+
+        <RadzenDataGridColumn TItem="OrderDetailDto" Context="orderdetail" Filterable="false" Sortable="false" TextAlign="TextAlign.Right" Frozen="true" FrozenPosition="FrozenColumnPosition.Right">
+            <Template Context="orderdetail">
+                <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => EditRow(orderdetail))" @onclick:stopPropagation="true">
+                </RadzenButton>
+                <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Variant="Variant.Flat" Shade="Shade.Lighter" Size="ButtonSize.Medium" class="my-1 ms-1" Click="@(args => DeleteRow(orderdetail))" @onclick:stopPropagation="true">
+                </RadzenButton>
+            </Template>
+            <EditTemplate Context="orderdetail">
+                <RadzenButton Icon="check" ButtonStyle="ButtonStyle.Success" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@((args) => SaveRow(orderdetail))">
+                </RadzenButton>
+                <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" class="my-1 ms-1" Click="@((args) => CancelEdit(orderdetail))">
+                </RadzenButton>
+                <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Variant="Variant.Flat" Shade="Shade.Lighter" Size="ButtonSize.Medium" class="my-1 ms-1" Click="@(args => DeleteRow(orderdetail))">
+                </RadzenButton>
+            </EditTemplate>
+        </RadzenDataGridColumn>
+    </Columns>
+</RadzenDataGrid>
+@code {
+
+    [Parameter] public int OrderID { get; set; }
+    [Parameter] public string RecipeName { get; set; }
+    [Parameter] public bool Temp { get; set; }
+
+    bool isLoading = false;
+    int count;
+    int temp = 1;
+    RadzenDataGrid<OrderDetailDto> orderdetailsGrid;
+    IEnumerable<OrderDetailDto> orderdetails;
+    IEnumerable<OrderDetailDto> orderdetailIE;
+    IEnumerable<OrderDetailDto> recs;
+    IEnumerable<OrderDetailDto> ings;
+    IEnumerable<OrderDetailDto> orderdetailsList = new List<OrderDetailDto>();
+    List<OrderDetailDto> orderdetailList = new List<OrderDetailDto>();
+    List<OrderDetailDto> rtiList = new List<OrderDetailDto>();
+    OrderDetailDto orderdetailToInsert;
+    OrderDetailDto orderdetailToUpdate;
+    IList<int> ingValues = new int[] { 1 };
+    // async Task LoadData(LoadDataArgs args)
+    // {
+    //     isLoading = true;
+
+    //     await Task.Yield();
+
+    //     var ing = await _orderdetailService.GetAllOrderDetail();
+    //     var query = ing.AsQueryable();
+    //     count = query.Count();
+    //     orderdetails = query.Skip(args.Skip.Value).Take(args.Top.Value).ToList();
+    //     isLoading = false;
+    // }
+
+    async Task Reset()
+    {
+        //orderdetailToInsert = null;
+        //orderdetailToUpdate = null;
+        // orderdetailsGrid.Reset(true);
+        // await orderdetailsGrid.FirstPage(true);
+    }
+
+    protected async override Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        //orderdetailIE = await _orderdetailService.GetAllOrderDetail();
+        // if (orderdetailIE.Count() != 0)
+        // {
+        //     await PassComponents();
+        // }
+        //recs = await _rtiService.GetAllRecipeToOrderDetail();
+
+        // orderdetails = recs.Select(rt => new OrderDetailDto
+        //     {
+        //         // Map properties from RecipeToOrderDetail entity to DTO
+        //         RecipeToOrderDetailId = rt.RecipeToOrderDetailId,
+        //         RecipeId = rt.RecipeId,
+        //         OrderDetailId = rt.OrderDetailId,
+        //         Quantity = rt.Quantity,
+        //         MeasurementId = rt.MeasurementId,
+        //         // Map properties from related OrderDetail entity to DTO
+        //         OrderDetail = new OrderDetailDto
+        //         {
+        //             OrderDetailId = rt.OrderDetail.OrderDetailId,
+        //             Name = rt.OrderDetail.Name,
+        //             // Include other properties as needed
+        //         }
+        //     });
+        // Create sample data (replace this with your actual data retrieval logic)
+        orderdetails = new List<OrderDetailDto>
+        {
+            new OrderDetailDto { OrderDetailId = 1, OrderId = 1, VendorId = 1, IngredientId = 1, Amount = 20, MeasurementId = 1},
+            new OrderDetailDto { OrderDetailId = 2, OrderId = 1, VendorId = 2, IngredientId = 2, Amount = 30, MeasurementId = 1},
+            new OrderDetailDto { OrderDetailId = 3, OrderId = 1, VendorId = 1, IngredientId = 3, Amount = 10, MeasurementId = 2},
+            new OrderDetailDto { OrderDetailId = 4, OrderId = 1, VendorId = 3, IngredientId = 4, Amount = 60, MeasurementId = 2},
+            new OrderDetailDto { OrderDetailId = 5, OrderId = 1, VendorId = 4, IngredientId = 5, Amount = 80, MeasurementId = 1},
+            // Add more sample data as needed
+        };
+
+        // Assuming OrderDetailDto has a property named OrderDetail of type OrderDetailDto
+        // foreach (var recipeToOrderDetail in orderdetails)
+        // {
+        //     recipeToOrderDetail.OrderDetail = orderdetailIE.FirstOrDefault(i => i.OrderDetailId == recipeToOrderDetail.OrderDetailId);
+        // }
+
+    }
+
+    private async Task PassComponents()
+    {
+        orderdetailIE = GetOrderDetailsByType(ingValues);
+    }
+
+    private IEnumerable<OrderDetailDto> GetOrderDetailsByType(IList<int> orderdetailTypeValues)
+    {
+        return orderdetailList
+            .Where(x => orderdetailTypeValues.Contains(x.OrderDetailId))
+            .ToList();
+    }
+
+    async Task EditRow(OrderDetailDto orderdetail)
+    {
+        orderdetailToUpdate = orderdetail;
+        await orderdetailsGrid.EditRow(orderdetail);
+    }
+
+    void OnUpdateRow(OrderDetailDto orderdetail)
+    {
+        Reset();
+        //_rtiService.UpdateRecipeToOrderDetail(orderdetail);
+    }
+
+    async Task SaveRow(OrderDetailDto orderdetail)
+    {
+        await orderdetailsGrid.UpdateRow(orderdetail);
+    }
+
+    void CancelEdit(OrderDetailDto orderdetail)
+    {
+        Reset();
+        orderdetailsGrid.CancelEditRow(orderdetail);
+
+        // var orderdetailEntry = _orderdetailService.Sel(orderdetail);
+        // if (orderdetailEntry.State == EntityState.Modified)
+        // {
+        //     orderdetailEntry.CurrentValues.SetValues(orderdetailEntry.OriginalValues);
+        //     orderdetailEntry.State = EntityState.Unchanged;
+        // }
+    }
+
+    async Task DeleteRow(OrderDetailDto orderdetail)
+    {
+        Reset();
+
+        if (orderdetails.Contains(orderdetail))
+        {
+            //await _orderdetailService.RemoveOrderDetail(orderdetail);
+            await orderdetailsGrid.Reload();
+        }
+        else
+        {
+            orderdetailsGrid.CancelEditRow(orderdetail);
+            await orderdetailsGrid.Reload();
+        }
+    }
+
+    async Task InsertRow()
+    {
+        orderdetailToInsert = new OrderDetailDto();
+        await orderdetailsGrid.InsertRow(orderdetailToInsert);
+    }
+
+    void OnCreateRow(OrderDetailDto orderdetail)
+    {
+        //_rtiService.AddRecipeToOrderDetail(orderdetail);
+        orderdetailToInsert = null;
+    }
+}

@@ -1,0 +1,214 @@
+﻿@page "/recipesx"
+@using NSLPWasm.Dto
+@inject IIngredientService _ingredientService
+@inject IRecipeToIngredientService _rtiService
+
+<style>
+    .rz-grid-table {
+        width: unset;
+    }
+
+    .rz-data-grid {
+        display: grid;
+    }
+</style>
+<RadzenText TextStyle="TextStyle.H2">Recipe Form</RadzenText>
+
+<RadzenFieldset Text="Add New Recipe">
+    <RadzenStack Gap="1rem">
+        <RadzenRow AlignItems="AlignItems.Center">
+            <RadzenColumn Size="12" SizeMD="3">
+                <RadzenLabel Text="Recipe Name" Component="RecipeName" />
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="3">
+                <RadzenTextBox Style="width: 100%;" Name="RecipeName" />
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="6">
+                <RadzenRadioButtonList @bind-Value=@temp TValue="int" class="mb-5">
+                    <Items>
+                        <RadzenRadioButtonListItem Text="Hot" Value="1" />
+                        <RadzenRadioButtonListItem Text="Cold" Value="2" />
+                    </Items>
+                </RadzenRadioButtonList>
+            </RadzenColumn>
+        </RadzenRow>
+    </RadzenStack>
+</RadzenFieldset>
+
+<br/>
+<br/>
+
+<RadzenButton ButtonStyle="ButtonStyle.Success" Icon="add_circle_outline" class="mt-2 mb-4" Text="Add Ingredient" Click="@InsertRow" Disabled=@(ingredientToInsert != null || ingredientToUpdate != null) />
+<RadzenDataGrid @ref="ingredientsGrid" AllowAlternatingRows="false" AllowFiltering="false" AllowPaging="true" PageSize="5" AllowSorting="false" EditMode="DataGridEditMode.Single"
+                Data="@ingredients" TItem="RecipeToIngredientDto" RowUpdate="@OnUpdateRow" RowCreate="@OnCreateRow" ColumnWidth="200px">
+    <Columns>
+        <RadzenDataGridColumn TItem="RecipeToIngredientDto" Property="IngredientDto.Name" Title="Ingredient" Width="280px">
+            <EditTemplate Context="ingredient">
+                <RadzenDropDown @bind-Value="ingredient.IngredientId" Data="@ingredientIE" TextProperty="CompanyName" ValueProperty="IngredientId" Style="width:100%; display: block;" />
+            </EditTemplate>
+        </RadzenDataGridColumn>
+
+        <RadzenDataGridColumn TItem="RecipeToIngredientDto" Property="Quantity" Title="Quantity">
+            <EditTemplate Context="ingredient">
+                <RadzenNumeric @bind-Value="ingredient.Quantity" Name="Quantity" />
+                <RadzenRequiredValidator Text="Quantity is required" Component="Quantity" Popup="true" />
+            </EditTemplate>
+        </RadzenDataGridColumn>
+
+        <RadzenDataGridColumn TItem="RecipeToIngredientDto" Context="ingredient" Filterable="false" Sortable="false" TextAlign="TextAlign.Right" Frozen="true" FrozenPosition="FrozenColumnPosition.Right">
+            <Template Context="ingredient">
+                <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => EditRow(ingredient))" @onclick:stopPropagation="true">
+                </RadzenButton>
+                <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Variant="Variant.Flat" Shade="Shade.Lighter" Size="ButtonSize.Medium" class="my-1 ms-1" Click="@(args => DeleteRow(ingredient))" @onclick:stopPropagation="true">
+                </RadzenButton>
+            </Template>
+            <EditTemplate Context="ingredient">
+                <RadzenButton Icon="check" ButtonStyle="ButtonStyle.Success" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@((args) => SaveRow(ingredient))">
+                </RadzenButton>
+                <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" class="my-1 ms-1" Click="@((args) => CancelEdit(ingredient))">
+                </RadzenButton>
+                <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Variant="Variant.Flat" Shade="Shade.Lighter" Size="ButtonSize.Medium" class="my-1 ms-1" Click="@(args => DeleteRow(ingredient))">
+                </RadzenButton>
+            </EditTemplate>
+        </RadzenDataGridColumn>
+    </Columns>
+</RadzenDataGrid>
+
+
+
+@code {
+    bool isLoading = false;
+    int count;
+    int temp = 1;
+    RadzenDataGrid<RecipeToIngredientDto> ingredientsGrid;
+    IEnumerable<RecipeToIngredientDto> ingredients;
+    IEnumerable<IngredientDto> ingredientIE;
+    IEnumerable<RecipeToIngredientDto> recs;
+    IEnumerable<IngredientDto> ings;
+    IEnumerable<RecipeToIngredientDto> ingredientsList = new List<RecipeToIngredientDto>();
+    List<IngredientDto> ingredientList = new List<IngredientDto>();
+    List<RecipeToIngredientDto> rtiList = new List<RecipeToIngredientDto>();
+    RecipeToIngredientDto ingredientToInsert;
+    RecipeToIngredientDto ingredientToUpdate;
+    IList<int> ingValues = new int[] { 1 };
+    // async Task LoadData(LoadDataArgs args)
+    // {
+    //     isLoading = true;
+
+    //     await Task.Yield();
+
+    //     var ing = await _ingredientService.GetAllIngredient();
+    //     var query = ing.AsQueryable();
+    //     count = query.Count();
+    //     ingredients = query.Skip(args.Skip.Value).Take(args.Top.Value).ToList();
+    //     isLoading = false;
+    // }
+
+    async Task Reset()
+    {
+        //ingredientToInsert = null;
+        //ingredientToUpdate = null;
+        // ingredientsGrid.Reset(true);
+        // await ingredientsGrid.FirstPage(true);
+    }
+
+    protected async override Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        ingredientIE = await _ingredientService.GetAllIngredient();
+        if (ingredientIE.Count() != 0)
+        {
+            await PassComponents();
+        }
+        recs = await _rtiService.GetAllRecipeToIngredient();
+
+        // ingredients = recs.Select(rt => new RecipeToIngredientDto
+        // {
+        //     // Map properties from RecipeToIngredient entity to DTO
+        //         RecipeToIngredientId = rt.RecipeToIngredientId,
+        //     RecipeId = rt.RecipeId,
+        //     IngredientId = rt.IngredientId,
+        //     Quantity = rt.Quantity,
+        //         MeasurementId = rt.MeasurementId,
+        //     // Map properties from related Ingredient entity to DTO
+        //     Ingredient = new IngredientDto
+        //     {
+        //         IngredientId = rt.Ingredient.IngredientId,
+        //             Name = rt.Ingredient.Name,
+        //         // Include other properties as needed
+        //     }
+        // });
+
+    }
+
+    private async Task PassComponents()
+    {
+        ingredientIE = GetIngredientsByType(ingValues);
+    }
+
+    private IEnumerable<IngredientDto> GetIngredientsByType(IList<int> ingredientTypeValues)
+    {
+        return ingredientList
+            .Where(x => ingredientTypeValues.Contains(x.IngredientTypeId))
+            .ToList();
+    }
+
+    async Task EditRow(RecipeToIngredientDto ingredient)
+    {
+        ingredientToUpdate = ingredient;
+        await ingredientsGrid.EditRow(ingredient);
+    }
+
+    void OnUpdateRow(RecipeToIngredientDto ingredient)
+    {
+        Reset();
+        _rtiService.UpdateRecipeToIngredient(ingredient);
+    }
+
+    async Task SaveRow(RecipeToIngredientDto ingredient)
+    {
+        await ingredientsGrid.UpdateRow(ingredient);
+    }
+
+    void CancelEdit(RecipeToIngredientDto ingredient)
+    {
+        Reset();
+        ingredientsGrid.CancelEditRow(ingredient);
+
+        // var ingredientEntry = _ingredientService.Sel(ingredient);
+        // if (ingredientEntry.State == EntityState.Modified)
+        // {
+        //     ingredientEntry.CurrentValues.SetValues(ingredientEntry.OriginalValues);
+        //     ingredientEntry.State = EntityState.Unchanged;
+        // }
+    }
+
+    async Task DeleteRow(RecipeToIngredientDto ingredient)
+    {
+        Reset();
+
+        if (ingredients.Contains(ingredient))
+        {
+            //await _ingredientService.RemoveIngredient(ingredient);
+            await ingredientsGrid.Reload();
+        }
+        else
+        {
+            ingredientsGrid.CancelEditRow(ingredient);
+            await ingredientsGrid.Reload();
+        }
+    }
+
+    async Task InsertRow()
+    {
+        ingredientToInsert = new RecipeToIngredientDto();
+        await ingredientsGrid.InsertRow(ingredientToInsert);
+    }
+
+    void OnCreateRow(RecipeToIngredientDto ingredient)
+    {
+        _rtiService.AddRecipeToIngredient(ingredient);
+        ingredientToInsert = null;
+    }
+}
+

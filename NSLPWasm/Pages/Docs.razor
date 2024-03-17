@@ -1,0 +1,154 @@
+﻿@page "/docs"
+@using NSLPWasm.Component
+@using NSLPWasm.Component.DocumentComponent
+@using NSLPWasm.Dto
+@inject DialogService DialogService
+@using Microsoft.Extensions.Logging
+@inject ILogger<Docs> Logger
+<style>
+    .documentDL-title {
+        min-height: 72px;
+        background-color: var(--rz-secondary-lighter);
+    }
+
+    .price-badge {
+        font-size: 16px;
+        font-weight: bold;
+        line-height: 20px;
+        padding: 8px;
+    }
+</style>
+
+<RadzenAlert Variant="Variant.Flat" AlertStyle="AlertStyle.Primary" Icon="info_outline" Shade="Shade.Lighter" Size="AlertSize.Small" AllowClose=false>
+    All documents that have text in red are required.
+</RadzenAlert>
+
+<RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" Class="rz-p-2">
+    <RadzenCheckBox @bind-Value="@allowVirtualization" Name="allowVirtualization" />
+    <RadzenLabel Text="Allow virtualization" Component="allowVirtualization" />
+</RadzenStack>
+
+<RadzenDataList AllowVirtualization=@allowVirtualization Style="@(allowVirtualization ? "height:400px;overflow:auto;" : "")"
+                WrapItems="@(!allowVirtualization)" AllowPaging="@(!allowVirtualization)"
+                Data="@documentsIQ" TItem="DocumentDto" PageSize="5" PagerHorizontalAlign="HorizontalAlign.Left" ShowPagingSummary="true">
+    <Template Context="documentDL">
+        <RadzenCard Style="width: 100%; padding: 0;">
+            <RadzenRow Gap="0">
+                @if(documentDL.IsRequired==true)
+                {
+                    <RadzenColumn Size="12" SizeLG="3" Class="rz-p-4 documentDL-title ">
+                        <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H5" class="rz-color-primary">@(documentDL.DocumentName)</RadzenText>
+                    </RadzenColumn>
+                }
+                else
+                {
+                    <RadzenColumn Size="12" SizeLG="3" Class="rz-p-4 documentDL-title">
+                        <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H5" class="rz-color-secondary">@(documentDL.DocumentName)</RadzenText>
+                    </RadzenColumn>
+                }
+
+                <RadzenColumn Size="12" SizeLG="7" Class="rz-p-4">
+                    <RadzenRow Gap="0">
+                        <RadzenColumn Size="12" SizeMD="10" SizeLG="10">
+                            @if(documentDL.Description!=null)
+                            {
+                                <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H5" Class="rz-mb-0">Description</RadzenText>
+                                <RadzenText TextStyle="TextStyle.Body2">@(documentDL.Description)</RadzenText>
+                            }
+                        </RadzenColumn>
+                        <RadzenColumn Size="12" SizeMD="2" SizeLG="2">
+                            @* <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H5" Class="rz-mb-0">isRequired</RadzenText> *@
+                            
+                        </RadzenColumn>
+                    </RadzenRow>
+                </RadzenColumn>
+                <RadzenColumn Size="12" SizeLG="2" Class="rz-p-4">
+                    <RadzenButton ButtonStyle="ButtonStyle.Success" Variant="Variant.Flat" Shade="Shade.Lighter" Icon="pageview" class="m-1" Click=@(() => OpenDocument(documentDL.DocumentId)) Text="" />
+                </RadzenColumn>
+            </RadzenRow>
+        </RadzenCard>
+    </Template>
+</RadzenDataList>
+
+@code {
+    Variant variant = Variant.Outlined;
+
+    IQueryable<DocumentDto> documentsIQ;
+    bool allowVirtualization;
+
+    DocumentDto document = new DocumentDto();
+
+    RadzenUpload upload;
+
+    async Task OpenDocument(int documentId)
+    {
+        await DialogService.OpenAsync<DialogCardDocument>($"Document {documentId}",
+              new Dictionary<string, object>() { { "DocumentID", documentId } },
+              new DialogOptions() { Width = "900px", Height = "720px" });
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+
+        // Create sample document (replace this with your actual document retrieval logic)
+        var documents = new List<DocumentDto>
+        {
+            new DocumentDto { DocumentId = 1, DocumentName = "Document 1", Description = "Description 1", IsRequired = false },
+            new DocumentDto { DocumentId = 2, DocumentName = "Document 2", Description = "Description 2", IsRequired = true },
+            new DocumentDto { DocumentId = 3, DocumentName = "Document 3",  IsRequired = false },
+            new DocumentDto { DocumentId = 4, DocumentName = "Document 4", Description = "Description 4", IsRequired = false },
+            new DocumentDto { DocumentId = 5, DocumentName = "Document 5", Description = "Description 5", IsRequired = true },
+            // Add more sample document as needed
+        };
+
+        documentsIQ = documents.AsQueryable();
+    }
+
+    void OnSubmit(DocumentDto model)
+    {
+        //console.Log($"Submit: {JsonSerializer.Serialize(model, new JsonSerializerOptions() { WriteIndented = true })}");
+    }
+
+    void OnInvalidSubmit(FormInvalidSubmitEventArgs args)
+    {
+        //console.Log($"InvalidSubmit: {JsonSerializer.Serialize(args, new JsonSerializerOptions() { WriteIndented = true })}");
+    }
+
+    void OnProgress(UploadProgressArgs args, string name)
+    {
+        if (args.Progress == 100)
+        {
+            foreach (var file in args.Files)
+            {
+                //console.Log($"Uploaded: {file.Name} / {file.Size} bytes");
+            }
+        }
+    }
+    
+    private List<IBrowserFile> loadedFiles = new();
+    private long maxFileSize = 1024 * 15;
+    private int maxAllowedFiles = 1;
+    private bool isLoading;
+
+    private void LoadFiles(InputFileChangeEventArgs e)
+    {
+        isLoading = true;
+        loadedFiles.Clear();
+
+        foreach (var file in e.GetMultipleFiles(maxAllowedFiles))
+        {
+            try
+            {
+                loadedFiles.Add(file);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("File: {Filename} Error: {Error}",
+                    file.Name, ex.Message);
+            }
+        }
+
+        isLoading = false;
+    }
+}

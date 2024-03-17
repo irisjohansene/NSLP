@@ -1,0 +1,414 @@
+﻿@using NSLPWasm.Dto
+@inject DialogService DialogService
+@inject IMenuTypeService _menuTypeService
+@inject IIngredientService _ingService
+@inject IMenuService _menuService
+@inject IMenuToIngredientOrRecipeService _mtiService
+
+<RadzenTemplateForm TItem="MealComponent" Data="@model" Submit=@OnSubmit>
+    <RadzenTabs @bind-SelectedIndex=@selectedIndex>
+        <Tabs>
+            <RadzenTabsItem Text="Breakfast">
+                <div class="row" style="margin-bottom: 16px">
+                    <div class="col-md-3">
+                        <RadzenLabel Text="Select Milk" Component="Milk" Style="margin-right: 8px; vertical-align: middle;" />
+                    </div>
+                    <div class="col">
+                        <RadzenDropDown @bind-Value=@bfmilksValues Data=@bfmilks TextProperty="Name" ValueProperty="IngredientId" Name="Milk"
+                                        Multiple=true AllowClear=true AllowFiltering=true Chips=true Style="width: 100%; max-width: 400px;" />
+                    </div>
+                </div>
+
+                <div class="row" style="margin-bottom: 16px">
+                    <div class="col-md-3">
+                        <RadzenLabel Text="Select Grain" Component="Grain" Style="margin-right: 8px; vertical-align: middle;" />
+                    </div>
+                    <div class="col">
+                        <RadzenDropDown @bind-Value=@bfgrainsValues Data=@bfgrains TextProperty="Name" ValueProperty="IngredientId" Name="Grain"
+                                        Multiple=true AllowClear=true AllowFiltering=true Chips=true Style="width: 100%; max-width: 400px;" />
+                    </div>
+                </div>
+
+                <div class="row" style="margin-bottom: 16px">
+                    <div class="col-md-3">
+                        <RadzenLabel Text="Select Fruit" Component="Fruit" Style="margin-right: 8px; vertical-align: middle;" />
+                    </div>
+                    <div class="col">
+                        <RadzenDropDown @bind-Value=@bffruitsValues Data=@bffruits TextProperty="Name" ValueProperty="IngredientId" Name="Fruit"
+                                        Multiple=true AllowClear=true AllowFiltering=true Chips=true Style="width: 100%; max-width: 400px;" />
+                    </div>
+                </div>
+            </RadzenTabsItem>
+            <RadzenTabsItem Text="Lunch">
+                <div class="row" style="margin-bottom: 16px">
+                    <div class="col-md-3">
+                        <RadzenLabel Text="Select Milk" Component="Milk" Style="margin-right: 8px; vertical-align: middle;" />
+                    </div>
+                    <div class="col">
+                        <RadzenDropDown @bind-Value=@lunchmilksValues Data=@lunchmilks TextProperty="Name" ValueProperty="IngredientId" Name="Milk"
+                                        Multiple=true AllowClear=true AllowFiltering=true Chips=true Style="width: 100%; max-width: 400px;" />
+                    </div>
+                </div>
+
+                <div class="row" style="margin-bottom: 16px">
+                    <div class="col-md-3">
+                        <RadzenLabel Text="Select Grain" Component="Grain" Style="margin-right: 8px; vertical-align: middle;" />
+                    </div>
+                    <div class="col">
+                        <RadzenDropDown @bind-Value=@lunchgrainsValues Data=@lunchgrains TextProperty="Name" ValueProperty="IngredientId" Name="Grain"
+                                        Multiple=true AllowClear=true AllowFiltering=true Chips=true Style="width: 100%; max-width: 400px;" />
+                    </div>
+                </div>
+
+                <div class="row" style="margin-bottom: 16px">
+                    <div class="col-md-3">
+                        <RadzenLabel Text="Select Fruit" Component="Fruit" Style="margin-right: 8px; vertical-align: middle;" />
+                    </div>
+                    <div class="col">
+                        <RadzenDropDown @bind-Value=@lunchfruitsValues Data=@lunchfruits TextProperty="Name" ValueProperty="IngredientId" Name="Fruit"
+                                        Multiple=true AllowClear=true AllowFiltering=true Chips=true Style="width: 100%; max-width: 400px;" />
+                    </div>
+                </div>
+
+                <div class="row" style="margin-bottom: 16px">
+                    <div class="col-md-3">
+                        <RadzenLabel Text="Select Meat" Component="Meat" Style="margin-right: 8px; vertical-align: middle;" />
+                    </div>
+                    <div class="col">
+                        <RadzenDropDown @bind-Value=@meatsValues Data=@meats TextProperty="Name" ValueProperty="IngredientId" Name="Meat"
+                                        Multiple=true AllowClear=true AllowFiltering=true Chips=true Style="width: 100%; max-width: 400px;" />
+                    </div>
+                </div>
+
+                <div class="row" style="margin-bottom: 16px">
+                    <div class="col-md-3">
+                        <RadzenLabel Text="Select Vegetables" Component="Vegetable" Style="margin-right: 8px; vertical-align: middle;" />
+                    </div>
+                    <div class="col">
+                        <RadzenDropDown @bind-Value=@vegsValues Data=@vegs TextProperty="Name" ValueProperty="IngredientId" Name="Vegetable"
+                                        Multiple=true AllowClear=true AllowFiltering=true Chips=true Style="width: 100%; max-width: 400px;" />
+                    </div>
+                </div>
+            </RadzenTabsItem>
+            <RadzenTabsItem Text="Snack">
+                @* <div class="row" style="margin-bottom: 16px">
+                    <div class="col-md-3">
+                        <RadzenLabel Text="Start" />
+                    </div>
+                    <div class="col">
+                        <RadzenDatePicker @bind-Value="@model.Start" Name="Start" ShowTime="true" />
+                        <RadzenRequiredValidator Text="Start is required" Component="Start" />
+                    </div>
+                </div>
+                <div class="row" style="margin-bottom: 16px">
+                    <div class="col-md-3">
+                        <RadzenLabel Text="End" />
+                    </div>
+                    <div class="col">
+                        <RadzenDatePicker Name="End" @bind-Value="@model.End" ShowTime="true" />
+                        <RadzenRequiredValidator Component="End" Text="End is required" />
+                    </div>
+                </div> *@
+            </RadzenTabsItem>
+            <RadzenTabsItem Text="Supper">
+                @* <div class="row" style="margin-bottom: 16px">
+                    <div class="col-md-3">
+                        <RadzenLabel Text="Start" />
+                    </div>
+                    <div class="col">
+                        <RadzenDatePicker @bind-Value="@model.Start" Name="Start" ShowTime="true" />
+                        <RadzenRequiredValidator Text="Start is required" Component="Start" />
+                    </div>
+                </div>
+                <div class="row" style="margin-bottom: 16px">
+                    <div class="col-md-3">
+                        <RadzenLabel Text="End" />
+                    </div>
+                    <div class="col">
+                        <RadzenDatePicker Name="End" @bind-Value="@model.End" ShowTime="true" />
+                        <RadzenRequiredValidator Component="End" Text="End is required" />
+                    </div>
+                </div> *@
+            </RadzenTabsItem>
+        </Tabs>
+    </RadzenTabs>
+    <div class="row">
+        <div class="col-md-3"></div>
+        <div class="col">
+            <RadzenButton ButtonType="ButtonType.Submit" Text="Save" Icon="save" BusyText="Saving ..." IsBusy=@busy />
+        </div>
+    </div>
+</RadzenTemplateForm>
+@code {
+    bool busy;
+    int selectedIndex = 0;
+    [Parameter]
+    public DateTime DateAssigned { get; set; }
+
+    [Parameter]
+    public int MenuTypeId { get; set; }
+
+    [Parameter]
+    public string MenuTypeName { get; set; }
+
+    public MealComponent model = new MealComponent();
+    IEnumerable<MenuTypeDto> menuTypes;
+    public string SelectedMenuType;
+    public int SelectedMenu;
+
+    IEnumerable<IngredientDto> ingredientIE;
+    IEnumerable<MenuToIngredientOrRecipeDto> mtiIE;
+
+    IList<int> bfmilksValues = new int[] { 1 };
+    IList<int> lunchmilksValues = new int[] { 14 };
+    IList<int> bfgrainsValues = new int[] { 11 };
+    IList<int> lunchgrainsValues = new int[] { 12 };
+    IList<int> vegsValues = new int[] { 4, 5, 6, 7, 8, 9, 10 };
+    IList<int> lunchfruitsValues = new int[] { 3 };
+    IList<int> bffruitsValues = new int[] { 2 };
+    IList<int> meatsValues = new int[] { 13 };
+
+    IEnumerable<IngredientDto> bfmilks;
+    IEnumerable<IngredientDto> lunchmilks;
+    IEnumerable<IngredientDto> bfgrains;
+    IEnumerable<IngredientDto> lunchgrains;
+    IEnumerable<IngredientDto> vegs;
+    IEnumerable<IngredientDto> bffruits;
+    IEnumerable<IngredientDto> lunchfruits;
+    IEnumerable<IngredientDto> meats;
+
+    List<IngredientDto> ingredientList = new List<IngredientDto>();
+
+    protected async override Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        ingredientList = await _ingService.GetAllIngredient();
+        if(ingredientList.Count!=0)
+        {
+            await PassComponents();
+        }
+    }
+
+    private async Task PassComponents()
+    {
+        GetBFMilk();
+        GetBFGrain();
+        GetBFFruit();
+        GetLunchMilk();
+        GetLunchGrain();
+        GetLunchFruit();
+        GetVeg();
+        GetMeat();
+    }
+
+    private void GetBFMilk()
+    {
+        bfmilks = GetIngredientsByType(bfmilksValues);
+    }
+
+    private void GetLunchMilk()
+    {
+        lunchmilks = GetIngredientsByType(lunchmilksValues);
+    }
+
+    private void GetBFGrain()
+    {
+        bfgrains = GetIngredientsByType(bfgrainsValues);
+    }
+
+    private void GetLunchGrain()
+    {
+        lunchgrains = GetIngredientsByType(lunchgrainsValues);
+    }
+
+    private void GetBFFruit()
+    {
+        bffruits = GetIngredientsByType(bffruitsValues);
+    }
+
+    private void GetLunchFruit()
+    {
+        lunchfruits = GetIngredientsByType(lunchfruitsValues);
+    }
+
+    private void GetMeat()
+    {
+        meats = GetIngredientsByType(meatsValues);
+    }
+
+    private void GetVeg()
+    {
+        vegs = GetIngredientsByType(vegsValues);
+    }
+
+    private IEnumerable<IngredientDto> GetIngredientsByType(IList<int> ingredientTypeValues)
+    {
+        return ingredientList
+            .Where(x => ingredientTypeValues.Contains(x.IngredientTypeId))
+            .ToList();
+    }
+
+
+    protected override void OnParametersSet()
+    {
+        model.MenuTypeId = MenuTypeId;
+        model.MenuTypeName = MenuTypeName;
+        model.DateAssigned = DateAssigned;
+    }
+
+    async Task OnSubmit(MealComponent model)
+    {
+        busy = true;
+
+        try
+        {
+            // Menu Breakfast
+            MenuDto bfmenu = new MenuDto { MenuDate = model.DateAssigned };
+            var bfret = await _menuService.AddMenu(bfmenu);
+
+            if (bfret==null)
+            {
+                // Handle the error, if any
+                Console.WriteLine($"Error adding menu");
+                busy = false;
+                return;
+            }
+            else
+            {
+                // Get ingredients for each category
+                var fbfmilk = GetIngredientsByType(bfmilksValues);
+                var fbfgrain = GetIngredientsByType(bfgrainsValues);
+                var fbffruit = GetIngredientsByType(bffruitsValues);
+
+                // Create a list of MenuToIngredientOrRecipeDto objects
+                // var bfmiList = CreateMenuToIngredientOrRecipeList(fbfmilk, bfret.MenuId)
+                //     .Concat(CreateMenuToIngredientOrRecipeList(fbfgrain, bfret.MenuId))
+                //     .Concat(CreateMenuToIngredientOrRecipeList(fbffruit, bfret.MenuId))
+                //     .ToList();
+
+                // Add menu-to-ingredient relationships
+                //await _mtiService.AddMenuToIngredientOrRecipe(bfmiList);
+            }
+
+            // Menu Lunch
+            MenuDto lmenu = new MenuDto { MenuDate = model.DateAssigned };
+            var lret = await _menuService.AddMenu(lmenu);
+
+            if (lret==null)
+            {
+                // Handle the error, if any
+                Console.WriteLine($"Error adding menu");
+                busy = false;
+                return;
+            }
+            else
+            {
+                // Get ingredients for each category
+                var flmilk = GetIngredientsByType(lunchmilksValues);
+                var flgrain = GetIngredientsByType(lunchgrainsValues);
+                var flfruit = GetIngredientsByType(lunchfruitsValues);
+                var flmeat = GetIngredientsByType(meatsValues);
+                var flveg = GetIngredientsByType(vegsValues);
+
+                // Create a list of MenuToIngredientOrRecipe objects
+                // var lmiList = CreateMenuToIngredientOrRecipeList(flmilk, lret.MenuId)
+                //     .Concat(CreateMenuToIngredientOrRecipeList(flgrain, lret.MenuId))
+                //     .Concat(CreateMenuToIngredientOrRecipeList(flfruit, lret.MenuId))
+                //     .Concat(CreateMenuToIngredientOrRecipeList(flmeat, lret.MenuId))
+                //     .Concat(CreateMenuToIngredientOrRecipeList(flveg, lret.MenuId))
+                //     .ToList();
+
+                // Add menu-to-ingredient relationships
+                // await _mtiService.AddMenuToIngredientOrRecipe(lmiList);
+            }
+
+            // Close the dialog
+            DialogService.Close(model);
+        }
+        catch (Exception e)
+        {
+            // Handle exceptions
+            Console.WriteLine($"Error: {e.Message}");
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    // Helper method to create MenuToIngredientOrRecipeDto objects
+    private IEnumerable<MenuToIngredientOrRecipeDto> CreateMenuToIngredientOrRecipeList(IEnumerable<IngredientDto> ingredients, int menuId)
+    {
+        return ingredients.Select(i => new MenuToIngredientOrRecipeDto
+            {
+                IngredientId = i.IngredientId,
+                MenuId = menuId
+            });
+    }
+
+    // async Task OnSubmit(MealComponent model)
+    // {
+    //     busy = true;
+    //     try
+    //     {
+    //         MenuDto bfmenu = new MenuDto();
+    //         //await Task.Delay(2000);
+
+    //         bfmenu.MenuDate = model.Start;
+    //         var bfret = await _menuService.AddMenu(bfmenu);
+
+    //         List<MenuToIngredientOrRecipeDto> bfmiList = new List<MenuToIngredientOrRecipeDto>();
+    //         var fbfmilk = ingredientList
+    //         .Where(x => bfmilksValues.Contains(x.IngredientTypeId))
+    //         .ToList();
+    //         foreach (var i in fbfmilk)
+    //         {
+    //             MenuToIngredientOrRecipeDto mi = new MenuToIngredientOrRecipeDto();
+    //             mi.IngredientId = i.IngredientId;
+    //             mi.MenuId = bfret.MenuId;
+
+    //             bfmiList.Add(mi);
+    //         }
+
+    //         var fbfgrain = ingredientList
+    //         .Where(x => bfgrainsValues.Contains(x.IngredientTypeId))
+    //         .ToList();
+    //         foreach (var i in fbfgrain)
+    //         {
+    //             MenuToIngredientOrRecipeDto mi = new MenuToIngredientOrRecipeDto();
+    //             mi.IngredientId = i.IngredientId;
+    //             mi.MenuId = bfret.MenuId;
+
+    //             bfmiList.Add(mi);
+    //         }
+
+    //         var fbffruit = ingredientList
+    //         .Where(x => bffruitsValues.Contains(x.IngredientTypeId))
+    //         .ToList();
+    //         foreach (var i in fbffruit)
+    //         {
+    //             MenuToIngredientOrRecipeDto mi = new MenuToIngredientOrRecipeDto();
+    //             mi.IngredientId = i.IngredientId;
+    //             mi.MenuId = bfret.MenuId;
+
+    //             bfmiList.Add(mi);
+    //         }
+
+    //         mtiIE = bfmiList;
+
+    //         await _mtiService.AddMenuToIngredientOrRecipe(mtiIE);
+    //         //Snackbar.Add("Successfully saved!", Severity.Success);
+
+    //         //Navigation.NavigateTo("/Collections", forceLoad: true);
+
+    //         //StateHasChanged();
+
+    //         DialogService.Close(model);
+    //         busy = false;
+    //     }
+    //     catch(Exception e)
+    //     {
+            
+    //     }
+    // }
+}

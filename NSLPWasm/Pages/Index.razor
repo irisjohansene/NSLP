@@ -1,0 +1,66 @@
+﻿@page "/"
+@using NSLPWasm.Component.CalendarComponent
+@using NSLPWasm.Dto
+@using NSLPWasm.Helpers
+@using NSLPWasm.MVVM
+@using NSLPWasm.Services.UtilityService
+@inject DialogService DialogService
+@inject IUtilityService _utilityService
+@inject ILocalStorageManager _localstorage;
+@inject ILocalStorageService _localStorage;
+
+<CalendarComponent/>
+
+@code {
+    PredefinedTableDto predefinedTableDto = new PredefinedTableDto();
+    IEnumerable<IngredientTypeDto> ingredientTypes = new List<IngredientTypeDto>();
+    IEnumerable<MeasurementDto> measurements = new List<MeasurementDto>();
+    IEnumerable<MenuTypeDto> menuTypes = new List<MenuTypeDto>();
+    IEnumerable<ProductCategoryDto> productCategories = new List<ProductCategoryDto>();
+
+    protected async override Task OnInitializedAsync()
+    {
+        try
+        {
+            await GetAllPredefinedTable();
+            StateHasChanged();
+        }
+        catch(Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+        finally
+        {
+            StateHasChanged();
+        }
+    }
+
+    public async Task GetAllPredefinedTable()
+    {
+        try
+        {
+            await _localStorage.ClearAsync();
+
+            predefinedTableDto = await _utilityService.GetAllPredefinedTable();
+            ingredientTypes = predefinedTableDto.IngredientTypes;
+            measurements = predefinedTableDto.Measurements;
+            menuTypes = predefinedTableDto.MenuTypes;
+            productCategories = predefinedTableDto.ProductCategories;
+
+            _localstorage.SaveIngredientTypesToLocalStorage(ingredientTypes);
+            _localstorage.SaveMeasurementsToLocalStorage(measurements);
+            _localstorage.SaveMenuTypesToLocalStorage(menuTypes);
+            _localstorage.SaveProductCategoriesToLocalStorage(productCategories);
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+        finally
+        {
+            StateHasChanged();
+        }
+    }
+}

@@ -1,0 +1,128 @@
+﻿@using NSLPWasm.Dto
+@using NSLPWasm.Services.RecipeService
+@inject IIngredientService _ingService
+@inject IRecipeService _recipeService
+@inject ILocalStorageManager _localstorage
+
+<RadzenButton Icon="add_circle_outline" style="margin-bottom: 10px" Text="Add Item" Click="@InsertRow" />
+<RadzenDataGrid @ref="rtisGrid" EditMode="DataGridEditMode.Single" Data="@rtis" TItem="RecipeToIngredientDto" ColumnWidth="180px">
+    <Columns>
+        <RadzenDataGridColumn TItem="RecipeToIngredientDto" Property="RecipeToIngredientId" Title="ID" />
+        <RadzenDataGridColumn TItem="RecipeToIngredientDto" Property="RecipeId" Title="RecipeId" />
+        <RadzenDataGridColumn TItem="RecipeToIngredientDto" Property="IngredientId" Title="Ingredient" Width="180px">
+            <EditTemplate Context="rti">
+                <RadzenDropDown @bind-Value="rti.IngredientId" Data="@ingredientIE" TextProperty="Name" ValueProperty="IngredientId" Style="width:100%; display: block;" />
+            </EditTemplate>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn TItem="RecipeToIngredientDto" Property="Quantity" Title="Quantity">
+            <EditTemplate Context="rti">
+                <RadzenNumeric @bind-Value="rti.Quantity" Name="Quantity" />
+                <RadzenRequiredValidator Text="Quantity is required" Component="Quantity" Popup="true" />
+            </EditTemplate>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn TItem="RecipeToIngredientDto" Property="MeasurementId" Title="Measurement" Width="180px">
+            <EditTemplate Context="rti">
+                <RadzenDropDown @bind-Value="rti.MeasurementId" Data="@measurementIE" TextProperty="MeasurementName" ValueProperty="MeasurementId" Style="width:100%; display: block;" />
+            </EditTemplate>
+        </RadzenDataGridColumn>
+
+         <RadzenDataGridColumn TItem="RecipeToIngredientDto" Context="mtior" Filterable="false" Sortable="false" TextAlign="TextAlign.Center" Width="120px">
+             <Template Context="mtior">
+                 <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Class="m-1" Click="@(args => EditRow(mtior))" @onclick:stopPropagation="true">
+                 </RadzenButton>
+             </Template>
+             <EditTemplate Context="mtior">
+                 <RadzenButton Icon="check" ButtonStyle="ButtonStyle.Primary" Class="m-1" Click="@((args) => SaveRow(mtior))">
+                 </RadzenButton>
+                 <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Light" Class="m-1" Click="@((args) => CancelEdit(mtior))">
+                 </RadzenButton>
+             </EditTemplate>
+         </RadzenDataGridColumn>
+         <RadzenDataGridColumn TItem="RecipeToIngredientDto" Context="mtior" Filterable="false" Sortable="false" TextAlign="TextAlign.Center" Width="60px">
+             <Template Context="mtior">
+                 <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Size="ButtonSize.Small" Class="m-1" Click="@(args => DeleteRow(mtior))" @onclick:stopPropagation="true">
+                 </RadzenButton>
+             </Template>
+             <EditTemplate Context="mtior">
+                 <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Size="ButtonSize.Small" Class="m-1" Click="@(args => DeleteRow(mtior))">
+                 </RadzenButton>
+             </EditTemplate>
+         </RadzenDataGridColumn>
+     </Columns>
+ </RadzenDataGrid>
+
+ @code {
+    RadzenDataGrid<RecipeToIngredientDto> rtisGrid;
+
+    [Parameter]
+    public List<RecipeToIngredientDto> rtis { get; set; }
+
+    IEnumerable<IngredientDto> ingredientIE;
+    IEnumerable<MeasurementDto> measurementIE;
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        var rtisVar = rtis;
+    }
+
+    protected async override Task OnInitializedAsync()
+    {
+        ingredientIE = await _ingService.GetAllIngredient();
+        measurementIE = await _localstorage.GetAllMeasurementsFromLocalStorage();
+    }
+
+    async Task EditRow(RecipeToIngredientDto mtior)
+    {
+        await rtisGrid.EditRow(mtior);
+    }
+
+    async Task SaveRow(RecipeToIngredientDto mtior)
+    {
+        if (mtior == mtiorToInsert)
+        {
+            mtiorToInsert = null;
+        }
+
+        await rtisGrid.UpdateRow(mtior);
+
+        rtis.Add(mtior);
+    }
+
+    void CancelEdit(RecipeToIngredientDto mtior)
+    {
+        if (mtior == mtiorToInsert)
+        {
+            mtiorToInsert = null;
+        }
+
+        rtisGrid.CancelEditRow(mtior);
+    }
+
+    async Task DeleteRow(RecipeToIngredientDto mtior)
+    {
+        if (mtior == mtiorToInsert)
+        {
+            mtiorToInsert = null;
+        }
+
+        if (rtis.Contains(mtior))
+        {
+            rtis.Remove(mtior);
+            await rtisGrid.Reload();
+        }
+        else
+        {
+            rtisGrid.CancelEditRow(mtior);
+        }
+    }
+
+    RecipeToIngredientDto mtiorToInsert;
+
+    async Task InsertRow()
+    {
+        var mtiorToAdd = new RecipeToIngredientDto();
+        await rtisGrid.InsertRow(mtiorToAdd);
+
+    }
+}

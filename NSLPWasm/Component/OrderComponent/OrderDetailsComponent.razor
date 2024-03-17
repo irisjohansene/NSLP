@@ -1,0 +1,140 @@
+﻿@using NSLPWasm.Dto
+@using NSLPWasm.Services.RecipeService
+@inject IIngredientService _ingService
+@inject IRecipeService _recipeService
+@inject ILocalStorageManager _localstorage
+
+<RadzenButton Icon="add_circle_outline" style="margin-bottom: 10px" Text="Add Item" Click="@InsertRow" />
+<RadzenDataGrid @ref="odetailsGrid" EditMode="DataGridEditMode.Single" Data="@odetails" TItem="OrderDetailDto" ColumnWidth="180px">
+    <Columns>
+        <RadzenDataGridColumn TItem="OrderDetailDto" Property="OrderDetailId" Title="Order Detail ID" />
+        <RadzenDataGridColumn TItem="OrderDetailDto" Property="OrderId" Title="Order ID" />
+        <RadzenDataGridColumn TItem="OrderDetailDto" Property="VendorId" Title="Vendor ID" />
+        <RadzenDataGridColumn TItem="OrderDetailDto" Property="IngredientId" Title="Ingredient" Width="180px">
+            <EditTemplate Context="odetail">
+                <RadzenDropDown @bind-Value="odetail.IngredientId" Data="@ingredientIE" TextProperty="Name" ValueProperty="IngredientId" Style="width:100%; display: block;" />
+            </EditTemplate>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn TItem="OrderDetailDto" Property="Amount" Title="Amount">
+            <Template Context="orderdetail">
+                @String.Format(new System.Globalization.CultureInfo("en-US"), "{0:C}", orderdetail.Amount)
+            </Template>
+            <EditTemplate Context="orderdetail">
+                <RadzenNumeric @bind-Value="orderdetail.Amount" Style="width:100%" />
+            </EditTemplate>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn TItem="OrderDetailDto" Property="MeasurementId" Title="Measurement" Width="180px">
+            <EditTemplate Context="odetail">
+                <RadzenDropDown @bind-Value="odetail.MeasurementId" Data="@measurementIE" TextProperty="MeasurementName" ValueProperty="MeasurementId" Style="width:100%; display: block;" />
+            </EditTemplate>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn TItem="OrderDetailDto" Property="Ordered" Title="Ordered">
+            <EditTemplate Context="orderdetail">
+                <RadzenCheckBox @bind-Value=orderdetail.Ordered Name="Ordered" />
+            </EditTemplate>
+        </RadzenDataGridColumn>
+
+        <RadzenDataGridColumn TItem="OrderDetailDto" Context="odetail" Filterable="false" Sortable="false" TextAlign="TextAlign.Center" Width="120px">
+            <Template Context="odetail">
+                <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Class="m-1" Click="@(args => EditRow(odetail))" @onclick:stopPropagation="true">
+                </RadzenButton>
+            </Template>
+            <EditTemplate Context="odetail">
+                <RadzenButton Icon="check" ButtonStyle="ButtonStyle.Primary" Class="m-1" Click="@((args) => SaveRow(odetail))">
+                </RadzenButton>
+                <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Light" Class="m-1" Click="@((args) => CancelEdit(odetail))">
+                </RadzenButton>
+            </EditTemplate>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn TItem="OrderDetailDto" Context="odetail" Filterable="false" Sortable="false" TextAlign="TextAlign.Center" Width="60px">
+            <Template Context="odetail">
+                <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Size="ButtonSize.Small" Class="m-1" Click="@(args => DeleteRow(odetail))" @onclick:stopPropagation="true">
+                </RadzenButton>
+            </Template>
+            <EditTemplate Context="odetail">
+                <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Size="ButtonSize.Small" Class="m-1" Click="@(args => DeleteRow(odetail))">
+                </RadzenButton>
+            </EditTemplate>
+        </RadzenDataGridColumn>
+    </Columns>
+</RadzenDataGrid>
+
+@code {
+    RadzenDataGrid<OrderDetailDto> odetailsGrid;
+
+    [Parameter]
+    public List<OrderDetailDto> odetails { get; set; }
+
+    [Parameter] public int OrderID { get; set; }
+    [Parameter] public string RecipeName { get; set; }
+    [Parameter] public bool Temp { get; set; }
+
+    IEnumerable<IngredientDto> ingredientIE;
+    IEnumerable<MeasurementDto> measurementIE;
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        var odetailsVar = odetails;
+    }
+
+    protected async override Task OnInitializedAsync()
+    {
+        ingredientIE = await _ingService.GetAllIngredient();
+        measurementIE = await _localstorage.GetAllMeasurementsFromLocalStorage();
+    }
+
+    async Task EditRow(OrderDetailDto odetail)
+    {
+        await odetailsGrid.EditRow(odetail);
+    }
+
+    async Task SaveRow(OrderDetailDto odetail)
+    {
+        if (odetail == odetailToInsert)
+        {
+            odetailToInsert = null;
+        }
+
+        await odetailsGrid.UpdateRow(odetail);
+
+        odetails.Add(odetail);
+    }
+
+    void CancelEdit(OrderDetailDto odetail)
+    {
+        if (odetail == odetailToInsert)
+        {
+            odetailToInsert = null;
+        }
+
+        odetailsGrid.CancelEditRow(odetail);
+    }
+
+    async Task DeleteRow(OrderDetailDto odetail)
+    {
+        if (odetail == odetailToInsert)
+        {
+            odetailToInsert = null;
+        }
+
+        if (odetails.Contains(odetail))
+        {
+            odetails.Remove(odetail);
+            await odetailsGrid.Reload();
+        }
+        else
+        {
+            odetailsGrid.CancelEditRow(odetail);
+        }
+    }
+
+    OrderDetailDto odetailToInsert;
+
+    async Task InsertRow()
+    {
+        var odetailToAdd = new OrderDetailDto();
+        await odetailsGrid.InsertRow(odetailToAdd);
+
+    }
+}

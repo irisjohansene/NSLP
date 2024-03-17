@@ -1,0 +1,124 @@
+﻿@using NSLPWasm.Dto
+@using NSLPWasm.Services.OrderService
+@inject DialogService DialogService
+@inject IMenuTypeService _menuTypeService
+@inject IIngredientService _ingService
+@inject IOrderService _orderService
+@inject IMenuService _menuService
+@inject IMenuToIngredientOrRecipeService _mtiService
+@inject ILocalStorageManager _localstorage
+@inject NotificationService NotificationService
+@inject NavigationManager Navigation
+@inject IOrderService _orderService
+
+@if (isLoading == true)
+{
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.Center" Wrap="FlexWrap.Wrap" Class="rz-m-12" Gap="2rem">
+        <RadzenProgressBarCircular ShowValue="isLoading" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Large" Visible="isLoading">
+            <Template>Wait</Template>
+        </RadzenProgressBarCircular>
+    </RadzenStack>
+}
+else
+{
+    <RadzenTemplateForm Data="@newOrder" Submit="@(async(OrderDto args) => {await Submit(args);})">
+        <RadzenText TextStyle="TextStyle.H6">Order Form</RadzenText>
+        <RadzenFieldset Text="Order Detail">
+            <RadzenStack Gap="1rem">
+                <RadzenRow AlignItems="AlignItems.Center">
+                    <RadzenColumn Size="12" SizeMD="4">
+                        <RadzenLabel Text="Order Date" Component="OrderDate" Style="margin-right: 8px; vertical-align: middle;" />
+                        <RadzenDatePicker @bind-Value=@newOrder.OrderDate Name="OrderDate" ShowCalendarWeek Disabled/>
+                    </RadzenColumn>
+                     <RadzenColumn Size="12" SizeMD="4">
+                         <RadzenLabel Text="From" Component="From" Style="margin-right: 8px; vertical-align: middle;" />
+                         <RadzenDatePicker TValue="DateTime?" Value=@fromValue Change="@(args => fromValue = args)" Name="From" />
+                     </RadzenColumn>
+                     <RadzenColumn Size="12" SizeMD="4">
+                         <RadzenLabel Text="Till" Component="Till" Style="margin-right: 8px; vertical-align: middle;" />
+                         <RadzenDatePicker TValue="DateTime?" Value=@tillValue Change="@(args => tillValue = args)" Name="Till" />
+                     </RadzenColumn>
+                </RadzenRow>
+            </RadzenStack>
+        </RadzenFieldset>
+        <br />
+        <br />
+        <OrderDetailsComponent rtis="odetailList" />
+
+        <div class="row justify-content-center">
+            <div class="col-md-12 d-flex align-items-end justify-content-center" style="margin-top: 16px;">
+                <RadzenButton ButtonType="ButtonType.Submit" Icon="save" Text="Order" style="margin-right: 20px;width:170px" />
+            </div>
+        </div>
+    </RadzenTemplateForm>
+}
+
+@code
+{
+    [Parameter] public OrderDto order { get; set; }
+    bool busy;
+    bool isLoading = false;
+    bool isDisabled = false;
+    int count;
+
+    DateTime? fromValue = DateTime.Now;
+    DateTime? tillValue = DateTime.Now;
+
+    OrderDto newOrder = new OrderDto();
+    List<OrderDetailDto> odetailList;
+
+    IEnumerable<MeasurementDto> measurementsIE = new List<MeasurementDto>();
+
+    async Task Submit(OrderDto arg)
+    {
+        isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            arg.OrderDetails = odetailList;
+            await _orderService.AddOrder(arg);
+            ShowNotification(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Successfully added!", Duration = 4000 });
+            StateHasChanged();
+            Navigation.NavigateTo("/orders", forceLoad: true);
+        }
+        catch (Exception e)
+        {
+            ShowNotification(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error While Saving!", Duration = 4000 });
+            Console.WriteLine(e.Message);
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    protected async override Task OnInitializedAsync()
+    {
+        isLoading = true;
+        StateHasChanged();
+        await base.OnInitializedAsync();
+        odetailList = new List<OrderDetailDto>();
+
+        try
+        {
+            ingredientIE = await _ingredientService.GetAllIngredient();
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e.Message.ToString());
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+
+    void ShowNotification(NotificationMessage message)
+    {
+        NotificationService.Notify(message);
+    }
+}

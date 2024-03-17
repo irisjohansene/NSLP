@@ -1,0 +1,349 @@
+﻿@page "/ingredients"
+@using NSLPWasm.MVVM
+@inject IIngredientService _ingredientService
+@inject ILocalStorageManager _localstorage
+@inject NotificationService NotificationService
+
+<style>
+/*     .rz-grid-table {
+        width: unset;
+    } */
+
+    .rz-data-grid {
+        display: grid;
+    }
+</style>
+
+@if(isLoading==true)
+{
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.Center" Wrap="FlexWrap.Wrap" Class="rz-m-12" Gap="2rem">
+        <RadzenProgressBarCircular ShowValue="isLoading" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Large" Visible="isLoading">
+            <Template>Wait</Template>
+        </RadzenProgressBarCircular>
+    </RadzenStack>
+}
+else
+{
+    <h3>Ingredients</h3>
+    <RadzenButton ButtonStyle="ButtonStyle.Success" Icon="add_circle_outline" class="mt-2 mb-4" Text="Add New Ingredient" Click="@InsertRow" Disabled=@(ingredientToInsert.Count() > 0) />
+    <RadzenDataGrid @ref="ingredientsGrid" AllowAlternatingRows="false" AllowFiltering="false" AllowPaging="true" PageSize="5" AllowSorting="false" EditMode="DataGridEditMode.Single"
+                    Data="@ingredients" TItem="IngredientDto" RowUpdate="@OnUpdateRow" RowCreate="@OnCreateRow" ColumnWidth="150px" IsLoading=@isLoading>
+        <Columns>
+            <RadzenDataGridColumn TItem="IngredientDto" Property="IngredientId" Title="ID" Frozen="true" />
+            <RadzenDataGridColumn TItem="IngredientDto" Property="Name" Title="Name" Frozen="true">
+                <EditTemplate Context="ingredient">
+                    <RadzenTextBox @bind-Value="ingredient.Name" Style="width:200px; display: block" Name="Name" />
+                    <RadzenRequiredValidator Text="Name is required" Component="Name" Popup="true" />
+                </EditTemplate>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="IngredientDto" Property="AmountPerServing" Title="Amount Per Serving">
+                <EditTemplate Context="ingredient">
+                    <RadzenNumeric @bind-Value="ingredient.AmountPerServing" Style="width:200px; display: block" Name="AmountPerServing" />
+                    <RadzenRequiredValidator Text="AmountPerServing is required" Component="AmountPerServing" Popup="true" />
+                </EditTemplate>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="IngredientDto" Property="APSM" Title="APSM">
+                <EditTemplate Context="ingredient">
+                    <RadzenDropDown @bind-Value="ingredient.APSM" Data="@measurementsIE" TextProperty="MeasurementName" ValueProperty="MeasurementId" Style="width:100%; display: block;" />
+                </EditTemplate>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="IngredientDto" Property="AmountPerUnit" Title="Amount Per Unit">
+                <EditTemplate Context="ingredient">
+                    <RadzenNumeric @bind-Value="ingredient.AmountPerUnit" Style="width:200px; display: block" Name="AmountPerUnit" />
+                    <RadzenRequiredValidator Text="AmountPerUnit is required" Component="AmountPerUnit" Popup="true" />
+                </EditTemplate>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="IngredientDto" Property="APUM" Title="APUM">
+                <EditTemplate Context="ingredient">
+                    <RadzenDropDown @bind-Value="ingredient.APUM" Data="@measurementsIE" TextProperty="MeasurementName" ValueProperty="MeasurementId" Style="width:100%; display: block;" />
+                </EditTemplate>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="IngredientDto" Property="AmountPerBulkUnit" Title="Amount Per Bulk Unit">
+                <EditTemplate Context="ingredient">
+                    <RadzenNumeric @bind-Value="ingredient.AmountPerBulkUnit" Style="width:200px; display: block" Name="AmountPerBulkUnit" />
+                    <RadzenRequiredValidator Text="AmountPerBulkUnit is required" Component="AmountPerBulkUnit" Popup="true" />
+                </EditTemplate>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="IngredientDto" Property="APBM" Title="APBM">
+                <EditTemplate Context="ingredient">
+                    <RadzenDropDown @bind-Value="ingredient.APBM" Data="@measurementsIE" TextProperty="MeasurementName" ValueProperty="MeasurementId" Style="width:100%; display: block;" />
+                </EditTemplate>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="IngredientDto" Property="IngredientTypeId" Title="Ingredient Type">
+                <EditTemplate Context="ingredient">
+                    <RadzenDropDown @bind-Value="ingredient.IngredientTypeId" Data="@ingredientTypesIE" TextProperty="IngredientTypeName" ValueProperty="IngredientTypeId" Style="width:100%; display: block;" />
+                </EditTemplate>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="IngredientDto" Property="ProductCategoryId" Title="Product Type">
+                <EditTemplate Context="ingredient">
+                    <RadzenDropDown @bind-Value="ingredient.ProductCategoryId" Data="@productCategoriesIE" TextProperty="ProductCategoryName" ValueProperty="ProductCategoryId" />
+                </EditTemplate>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="IngredientDto" Property="Sodiummg" Title="Sodium mg">
+                <EditTemplate Context="ingredient">
+                    <RadzenNumeric @bind-Value="ingredient.Sodiummg" Style="width:200px; display: block" Name="Sodiummg" />
+                </EditTemplate>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="IngredientDto" Property="MadeInUSA" Title="MadeInUSA">
+                <EditTemplate Context="ingredient">
+                    <RadzenNumeric @bind-Value="ingredient.MadeInUSA" Style="width:200px; display: block" Name="MadeInUSA" />
+                </EditTemplate>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="IngredientDto" Property="Hot" Title="Hot">
+                <EditTemplate Context="ingredient">
+                    <RadzenCheckBox @bind-Value="ingredient.Hot" Name="Hot" />
+                </EditTemplate>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="IngredientDto" Property="Cold" Title="Cold">
+                <EditTemplate Context="ingredient">
+                    <RadzenCheckBox @bind-Value="ingredient.Cold" Name="Cold" />
+                </EditTemplate>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="IngredientDto" Context="ingredient" Filterable="false" Sortable="false" TextAlign="TextAlign.Right" Frozen="true" FrozenPosition="FrozenColumnPosition.Right">
+                <Template Context="ingredient">
+                    <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => EditRow(ingredient))" @onclick:stopPropagation="true">
+                    </RadzenButton>
+                    <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Variant="Variant.Flat" Shade="Shade.Lighter" Size="ButtonSize.Medium" class="my-1 ms-1" Click="@(args => DeleteRow(ingredient))" @onclick:stopPropagation="true">
+                    </RadzenButton>
+                </Template>
+                <EditTemplate Context="ingredient">
+                    <RadzenButton Icon="check" ButtonStyle="ButtonStyle.Success" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@((args) => SaveRow(ingredient))">
+                    </RadzenButton>
+                    <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" class="my-1 ms-1" Click="@((args) => CancelEdit(ingredient))">
+                    </RadzenButton>
+                    <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Variant="Variant.Flat" Shade="Shade.Lighter" Size="ButtonSize.Medium" class="my-1 ms-1" Click="@(args => DeleteRow(ingredient))">
+                    </RadzenButton>
+                </EditTemplate>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+}
+
+@code {
+    bool isLoading = false;
+    int count;
+
+    RadzenDataGrid<IngredientDto> ingredientsGrid;
+    List<IngredientDto> ingredients = new List<IngredientDto>();
+    List<IngredientDto> ingredientToInsert = new List<IngredientDto>();
+    List<IngredientDto> ingredientToUpdate = new List<IngredientDto>();
+
+    IEnumerable<IngredientTypeDto> ingredientTypesIE;
+    IEnumerable<MeasurementDto> measurementsIE;
+    IEnumerable<ProductCategoryDto> productCategoriesIE;
+
+    protected override async Task OnInitializedAsync()
+    {
+        isLoading = true;
+        StateHasChanged(); // Notify that state has changed
+
+        try
+        {
+            // Fetch data or perform operations
+            ingredientTypesIE = await _localstorage.GetAllIngredientTypesFromLocalStorage();
+            StateHasChanged(); // Notify that state has changed
+
+            measurementsIE = await _localstorage.GetAllMeasurementsFromLocalStorage();
+            StateHasChanged(); // Notify that state has changed
+
+            productCategoriesIE = await _localstorage.GetAllProductCategoriesFromLocalStorage();
+            StateHasChanged(); // Notify that state has changed
+
+            // Delay for a short period to ensure re-rendering
+            await Task.Delay(100);
+
+            // Update data or perform other operations
+            await UpdateData();
+            isLoading = false;
+            StateHasChanged(); // Notify that state has changed
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e.Message.ToString());
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged(); // Notify that state has changed
+        }
+
+        await base.OnInitializedAsync(); // Call base method
+    }
+
+
+    void Reset()
+    {
+        ingredientToInsert.Clear();
+        ingredientToUpdate.Clear();
+    }
+
+    void Reset(IngredientDto ing)
+    {
+        ingredientToInsert.Remove(ing);
+        ingredientToUpdate.Remove(ing);
+    }
+
+    async Task EditRow(IngredientDto ingredient)
+    {
+        ingredientToUpdate.Add(ingredient);
+        await ingredientsGrid.EditRow(ingredient);
+    }
+
+    void OnUpdateRow(IngredientDto ingredient)
+    {
+        isLoading = true;
+        StateHasChanged();
+        try
+        {
+            Reset(ingredient);
+            var ing = _ingredientService.UpdateIngredient(ingredient);
+            if (ing.Result == null)
+            {
+                ShowNotification(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error While Saving!", Duration = 4000 });
+            }
+            else
+            {
+                ShowNotification(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Successfully updated!", Duration = 4000 });
+            }
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e.Message.ToString());
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    async Task SaveRow(IngredientDto ingredient)
+    {
+        isLoading = true;
+        StateHasChanged();
+        try
+        {
+            await ingredientsGrid.UpdateRow(ingredient);
+            await Task.Delay(1000);
+            await UpdateData();
+            isLoading = false;
+            StateHasChanged();
+
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e.Message.ToString());
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    void CancelEdit(IngredientDto ingredient)
+    {
+        Reset(ingredient);
+        ingredientsGrid.CancelEditRow(ingredient);
+    }
+
+    async Task DeleteRow(IngredientDto ingredient)
+    {
+        isLoading = true;
+        StateHasChanged();
+        try
+        {
+            Reset(ingredient);
+            if (ingredients.Contains(ingredient))
+            {
+                var ing = await _ingredientService.RemoveIngredient(ingredient);
+
+                if (ing != null)
+                {
+                    ShowNotification(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Successfully deleted!", Duration = 4000 });
+                    ingredients.Clear();
+                    await Task.Delay(1000);
+                    await UpdateData();
+                    await ingredientsGrid.Reload();
+                }
+            }
+            else
+            {
+                ingredientsGrid.CancelEditRow(ingredient);
+                await ingredientsGrid.Reload();
+            }
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e.Message.ToString());
+            ShowNotification(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error While Saving!", Duration = 4000 });
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    async Task InsertRow()
+    {
+        var ing = new IngredientDto();
+        ingredientToInsert.Add(ing);
+        await ingredientsGrid.InsertRow(ing);
+        StateHasChanged();
+    }
+
+    async Task OnCreateRow(IngredientDto ingredient)
+    {
+        isLoading = true;
+        StateHasChanged();
+        try
+        {
+            var newing = await _ingredientService.AddIngredient(ingredient);
+            if (newing == null)
+            {
+                ShowNotification(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error While Saving!", Duration = 4000 });
+            }
+            else
+            {
+                ingredientToInsert.Remove(ingredient);
+                ShowNotification(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Successfully added!", Duration = 4000 });
+                isLoading = false;
+                StateHasChanged();
+
+            }
+        }
+        catch (Exception e)
+        {
+            // Handle any exceptions
+            Console.WriteLine(e.Message.ToString());
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    public async Task UpdateData()
+    {
+        isLoading = true;
+        var ing = await _ingredientService.GetAllIngredient();
+        if (ing.Count() != 0)
+        {
+            ingredients = ing;
+            await ingredientsGrid.Reload();
+        }
+        isLoading = false;
+        StateHasChanged();
+    }
+
+    void ShowNotification(NotificationMessage message)
+    {
+        NotificationService.Notify(message);
+    }
+}

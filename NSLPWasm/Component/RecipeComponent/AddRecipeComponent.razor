@@ -1,0 +1,135 @@
+﻿@inject Radzen.DialogService dialogService
+@using NSLPWasm.Dto
+@using NSLPWasm.MVVM
+@using NSLPWasm.Services.RecipeService
+@inject IIngredientService _ingredientService
+@inject IRecipeToIngredientService _rtiService
+@inject IRecipeService _recipeService
+@inject ILocalStorageManager _localstorage
+@inject NotificationService NotificationService
+@inject NavigationManager Navigation
+<style>
+    .rz-grid-table {
+        width: unset;
+    }
+
+    .rz-data-grid {
+        display: grid;
+    }
+</style>
+
+@if(isLoading == true)
+{
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.Center" Wrap="FlexWrap.Wrap" Class="rz-m-12" Gap="2rem">
+        <RadzenProgressBarCircular ShowValue="isLoading" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Large" Visible="isLoading">
+            <Template>Wait</Template>
+        </RadzenProgressBarCircular>
+    </RadzenStack>
+}
+else
+{
+    <RadzenTemplateForm Data="@newRecipe" Submit="@(async(RecipeDto args) => {await Submit(args);})">
+        <RadzenText TextStyle="TextStyle.H6">Recipe Form</RadzenText>
+        <RadzenFieldset Text="Recipe Detail">
+            <RadzenStack Gap="1rem">
+                <RadzenRow AlignItems="AlignItems.Center">
+                    <RadzenColumn Size="12" SizeMD="2">
+                        <RadzenLabel Text="Recipe Name" Component="RecipeName" />
+                    </RadzenColumn>
+                    <RadzenColumn Size="12" SizeMD="3">
+                        <RadzenTextBox Style="width: 100%;" Name="RecipeName" @bind-Value="newRecipe.RecipeName" />
+                    </RadzenColumn>
+                    <RadzenColumn Size="12" SizeMD="2">
+                        <RadzenCheckBox @bind-Value="@newRecipe.Hot" Name="Hot" />
+                        <RadzenLabel Text="Hot" Component="Hot" Style="margin-left: 8px; vertical-align: middle;" />
+                        <RadzenCheckBox @bind-Value="@newRecipe.Cold" Name="Cold" />
+                        <RadzenLabel Text="Cold" Component="Cold" Style="margin-left: 8px; vertical-align: middle;" />
+                    </RadzenColumn>
+                    <RadzenColumn Size="12" SizeMD="3">
+                        <RadzenDropDown @bind-Value="newRecipe.ProductCategoryId" Data="@productCategoriesIE" TextProperty="ProductCategoryName" ValueProperty="ProductCategoryId" />
+                    </RadzenColumn>
+                </RadzenRow>
+            </RadzenStack>
+        </RadzenFieldset>
+        <br />
+        <br />
+        <RecipeToIngredientComponent rtis="rtiList" />
+
+        <div class="row justify-content-center">
+            <div class="col-md-12 d-flex align-items-end justify-content-center" style="margin-top: 16px;">
+                <RadzenButton ButtonType="ButtonType.Submit" Icon="save" Text="Save" style="margin-right: 20px;width:170px" />
+            </div>
+        </div>
+    </RadzenTemplateForm>
+}
+
+@code {
+
+    [Parameter] public RecipeDto recipe { get; set; }
+    bool busy;
+    bool isLoading = false;
+    bool isDisabled = false;
+    int count;
+
+    RecipeDto newRecipe = new RecipeDto();
+    List<RecipeToIngredientDto> rtiList;
+
+    IEnumerable<MeasurementDto> measurementsIE = new List<MeasurementDto>();
+    IEnumerable<IngredientDto> ingredientIE;
+    IEnumerable<ProductCategoryDto> productCategoriesIE = new List<ProductCategoryDto>();
+
+    async Task Submit(RecipeDto arg)
+    {
+        isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            arg.RecipeToIngredients = rtiList;
+            await _recipeService.AddRecipe(arg);
+            ShowNotification(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Successfully added!", Duration = 4000 });
+            StateHasChanged();
+            Navigation.NavigateTo("/recipes", forceLoad: true);
+        }
+        catch (Exception e)
+        {
+            ShowNotification(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error While Saving!", Duration = 4000 });
+            Console.WriteLine(e.Message);
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    protected async override Task OnInitializedAsync()
+    {
+        isLoading = true;
+        StateHasChanged();
+        await base.OnInitializedAsync();
+        rtiList = new List<RecipeToIngredientDto>();
+
+        try
+        {
+            ingredientIE = await _ingredientService.GetAllIngredient();
+            measurementsIE = await _localstorage.GetAllMeasurementsFromLocalStorage();
+            productCategoriesIE = await _localstorage.GetAllProductCategoriesFromLocalStorage();
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e.Message.ToString());
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+
+    void ShowNotification(NotificationMessage message)
+    {
+        NotificationService.Notify(message);
+    }
+}

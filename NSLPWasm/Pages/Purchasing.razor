@@ -1,0 +1,120 @@
+﻿@page "/purchasing"
+@using NSLPWasm.Component
+@using NSLPWasm.Component.OrderComponent
+@using NSLPWasm.Dto
+@using NSLPWasm.Services.OrderService
+@inject DialogService DialogService
+@inject ILocalStorageManager _localstorage
+@inject NotificationService NotificationService
+@inject IOrderService _orderService
+
+<style>
+    /*  .rz-grid-table {
+            width: unset;
+        } */
+
+    .rz-data-grid {
+        display: grid;
+    }
+</style>
+
+@if (isLoading == true)
+{
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.Center" Wrap="FlexWrap.Wrap" Class="rz-m-12" Gap="2rem">
+        <RadzenProgressBarCircular ShowValue="isLoading" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Large" Visible="isLoading">
+            <Template>Wait</Template>
+        </RadzenProgressBarCircular>
+    </RadzenStack>
+}
+else
+{
+    <RadzenButton ButtonStyle="ButtonStyle.Success" Icon="add_circle_outline" class="mt-2 mb-2" Text="Add Order" Click="@AddOrder" />
+    <RadzenDataGrid @ref="ordersGrid" AllowFiltering="false" AllowPaging="true" PageSize="5" AllowSorting="false"
+                    Data="@orders" TItem="OrderDto" IsLoading=@isLoading Responsive="true">
+        <Columns>
+            <RadzenDataGridColumn TItem="OrderDto" Property="OrderId" Title="Order ID" />
+            <RadzenDataGridColumn TItem="OrderDto" Property="OrderDate" Title="Order Date">
+                <EditTemplate Context="order">
+                    <RadzenDatePicker @bind-Value=order.OrderDate Name="OrderDate" ShowCalendarWeek />
+                     <RadzenRequiredValidator Text="Order Date is required" Component="OrderDate" Popup="true" />
+                 </EditTemplate>
+             </RadzenDataGridColumn>
+             <RadzenDataGridColumn TItem="OrderDto" Property="From" Title="From Date">
+                 <EditTemplate Context="order">
+                     <RadzenDatePicker @bind-Value=order.From Name="From" ShowCalendarWeek />
+                     <RadzenRequiredValidator Text="From Date is required" Component="From" Popup="true" />
+                 </EditTemplate>
+             </RadzenDataGridColumn>
+             <RadzenDataGridColumn TItem="OrderDto" Property="Till" Title="Till Date">
+                 <EditTemplate Context="order">
+                     <RadzenDatePicker @bind-Value=order.Till Name="Till" ShowCalendarWeek />
+                     <RadzenRequiredValidator Text="Till Date is required" Component="Till" Popup="true" />
+                 </EditTemplate>
+             </RadzenDataGridColumn>
+             <RadzenDataGridColumn TItem="OrderDto" Property="Completed" Title="Completed">
+                 <EditTemplate Context="order">
+                     <RadzenCheckBox @bind-Value=order.Completed Name="Completed" />
+                 </EditTemplate>
+             </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn Width="160px" TItem="OrderDto" Property="OrderId" Title="Order Details">
+                <Template Context="order">
+                    <RadzenButton ButtonStyle="ButtonStyle.Info" Variant="Variant.Flat" Shade="Shade.Lighter" Icon="pageview" class="m-1" Click=@(() => OpenOrder(order)) Text="View Details" />
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+}
+
+@code {
+    bool isLoading = false;
+    int count;
+
+    RadzenDataGrid<OrderDto> ordersGrid;
+    List<OrderDto> orders = new List<OrderDto>();
+
+    async Task OpenOrder(OrderDto selected)
+    {
+        await DialogService.OpenAsync<DialogCardPurchasing>($"View Order ",
+              new Dictionary<string, object>() { { "order", selected } },
+              new DialogOptions() { Width = "900px", Height = "720px" });
+    }
+
+    async Task AddOrder()
+    {
+        OrderDto newOrder = new OrderDto();
+        await DialogService.OpenAsync<AddPurchasingComponent>($"Add Order ",
+              new Dictionary<string, object>() { { "order", newOrder } },
+              new DialogOptions() { Width = "900px", Height = "720px" });
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        isLoading = true;
+        StateHasChanged();
+        await base.OnInitializedAsync();
+
+        try
+        {
+            var res = await _orderService.GetAllOrder();
+            if (res.Count() != 0)
+            {
+                orders = res;
+            }
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e.Message.ToString());
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    void ShowNotification(NotificationMessage message)
+    {
+        NotificationService.Notify(message);
+    }
+}

@@ -1,0 +1,94 @@
+﻿@using NSLPWasm.Dto
+@inject DialogService DialogService
+
+<RadzenScheduler @ref=@plan SlotRender=@OnSlotRender style="height: 768px;" TItem="MealComponent" Data=@plans StartProperty="Start" EndProperty="End"
+                 TextProperty="Text" SelectedIndex="2"
+                 SlotSelect=@OnSlotSelect MealComponentSelect=@OnMealComponentSelect MealComponentRender=@OnMealComponentRender>
+    <RadzenDayView />
+    <RadzenWeekView />
+    <RadzenMonthView />
+    <RadzenYearView />
+</RadzenScheduler>
+
+@code {
+    RadzenScheduler<MealComponent> plan;
+
+    IList<MealComponent> plans = new List<MealComponent>
+    {
+        new MealComponent { Start = DateTime.Today.AddHours(10), End = DateTime.Today.AddHours(10), Milk = "Milk", Fruit = "Fruit" , Grain = "Grain", Meat = "Meat", Vegetable = "Vegetable"},
+        new MealComponent { Start = DateTime.Today.AddDays(3), End = DateTime.Today.AddDays(3), Milk = "Milk", Fruit = "Fruit" , Grain = "Grain", Meat = "Meat", Vegetable = "Vegetable"},
+    };
+
+    void OnSlotRender(SchedulerSlotRenderEventArgs args)
+    {
+        // Highlight today in month view
+        if (args.View.Text == "Month" && args.Start.Date == DateTime.Today)
+        {
+            args.Attributes["style"] = "background: rgba(255,220,40,.2);";
+        }
+
+        // Highlight working hours (9-18)
+        if ((args.View.Text == "Week" || args.View.Text == "Day") && args.Start.Hour > 8 && args.Start.Hour < 19)
+        {
+            args.Attributes["style"] = "background: rgba(255,220,40,.2);";
+        }
+    }
+
+    async Task OnSlotSelect(SchedulerSlotSelectEventArgs args)
+    {
+
+        if (args.View.Text != "Year")
+        {
+            MealComponent data = await DialogService.OpenAsync<AddMealComponentPage>("Add MealComponent",
+                new Dictionary<string, object> { { "Start", args.Start }, { "End", args.End } });
+
+            if (data != null)
+            {
+                plans.Add(data);
+                // Either call the Reload method or reassign the Data property of the Scheduler
+                await plan.Reload();
+            }
+        }
+    }
+
+    async Task OnMealComponentSelect(SchedulerAppointmentSelectEventArgs<MealComponent> args)
+    {
+
+        var copy = new MealComponent
+            {
+                Start = args.Data.Start,
+                End = args.Data.End,
+                Milk = args.Data.Milk,
+                Grain = args.Data.Grain,
+                Fruit = args.Data.Fruit,
+                Vegetable = args.Data.Vegetable,
+                Meat = args.Data.Meat,
+            };
+
+        var data = await DialogService.OpenAsync<EditMealComponentPage>("Edit MealComponent", new Dictionary<string, object> { { "MealComponent", copy } });
+
+        if (data != null)
+        {
+            // Update the mealplan
+            args.Data.Start = data.Start;
+            args.Data.End = data.End;
+            args.Data.Milk = data.Milk;
+            args.Data.Grain = data.Grain;
+            args.Data.Fruit = data.Fruit;
+            args.Data.Vegetable = data.Vegetable;
+            args.Data.Meat = data.Meat;
+        }
+
+        await plan.Reload();
+    }
+
+    void OnMealComponentRender(SchedulerAppointmentRenderEventArgs<MealComponent> args)
+    {
+        // Never call StateHasChanged in MealComponentRender - would lead to infinite loop
+
+        if (args.Data.Milk == "Milk")
+        {
+            args.Attributes["style"] = "background: red";
+        }
+    }
+}

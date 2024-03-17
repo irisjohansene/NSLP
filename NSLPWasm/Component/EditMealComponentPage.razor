@@ -1,0 +1,58 @@
+﻿@using NSLPWasm.Dto
+@inject DialogService DialogService
+
+<RadzenTemplateForm TItem="MealComponent" Data="@model" Submit=@OnSubmit>
+    <div class="row" style="margin-bottom: 16px">
+        <div class="col-md-3">
+            <RadzenLabel Text="Text" />
+        </div>
+        <div class="col">
+            =
+            <div class="rz-p-12 rz-text-align-center">
+                <RadzenLabel Text="Select Value" Component="Milk" Style="margin-right: 8px; vertical-align: middle;" />
+                <RadzenDropDownDataGrid @bind-Value=model.Milk Name="Milk" />
+            </div>
+            <RadzenRequiredValidator Text="Title is required" Component="Milk" />
+        </div>
+    </div>
+    <div class="row" style="margin-bottom: 16px">
+        <div class="col-md-3">
+            <RadzenLabel Text="Start" />
+        </div>
+        <div class="col">
+            <RadzenDatePicker @bind-Value="@model.Start" Name="Start" ShowTime="true" />
+            <RadzenRequiredValidator Text="Start is required" Component="Start" />
+        </div>
+    </div>
+    <div class="row" style="margin-bottom: 16px">
+        <div class="col-md-3">
+            <RadzenLabel Text="End" />
+        </div>
+        <div class="col">
+            <RadzenDatePicker Name="End" @bind-Value="@model.End" ShowTime="true" />
+            <RadzenRequiredValidator Component="End" Text="End is required" />
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-3"></div>
+        <div class="col">
+            <RadzenButton ButtonType="ButtonType.Submit" Text="Save" />
+        </div>
+    </div>
+</RadzenTemplateForm>
+@code {
+    [Parameter]
+    public MealComponent MealComponent { get; set; }
+
+    MealComponent model = new MealComponent();
+
+    protected override void OnParametersSet()
+    {
+        model = MealComponent;
+    }
+
+    void OnSubmit(MealComponent model)
+    {
+        DialogService.Close(model);
+    }
+}

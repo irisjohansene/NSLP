@@ -1,0 +1,288 @@
+﻿@page "/ingredient"
+@using NSLPWasm.MVVM
+@inject IIngredientService _ingredientService
+@inject ILocalStorageManager _localstorage;
+@using Microsoft.EntityFrameworkCore
+
+<style>
+    .rz-grid-table {
+        width: unset;
+    }
+
+    .rz-data-grid{
+        display: grid;
+    }
+</style>
+
+<h3>Ingredients</h3>
+<RadzenButton ButtonStyle="ButtonStyle.Success" Icon="add_circle_outline" class="mt-2 mb-4" Text="Add New Ingredient" Click="@InsertRow" Disabled=@(ingredientToInsert != null || ingredientToUpdate != null) />
+<RadzenDataGrid @ref="ingredientsGrid" AllowAlternatingRows="false" AllowFiltering="false" AllowPaging="true" PageSize="5" AllowSorting="false" EditMode="DataGridEditMode.Single"
+                Data="@ingredients" TItem="IngredientMVVM" RowUpdate="@OnUpdateRow" RowCreate="@OnCreateRow" ColumnWidth="200px" IsLoading=@isLoading LoadData="@LoadData" Count="@count">
+    <Columns>
+        <RadzenDataGridColumn TItem="IngredientMVVM" Property="Name" Title="Name" Frozen="true">
+            <EditTemplate Context="ingredient">
+                <RadzenTextBox @bind-Value="ingredient.Name" Style="width:200px; display: block" Name="Name" />
+                <RadzenRequiredValidator Text="Name is required" Component="Name" Popup="true" />
+            </EditTemplate>
+        </RadzenDataGridColumn>
+
+        <RadzenDataGridColumn TItem="IngredientMVVM" Property="AmountPerServing" Title="Amount Per Serving">
+            <EditTemplate Context="ingredient">
+                <RadzenNumeric @bind-Value="ingredient.AmountPerServing" Style="width:200px; display: block" Name="AmountPerServing" />
+                <RadzenRequiredValidator Text="AmountPerServing is required" Component="AmountPerServing" Popup="true" />
+            </EditTemplate>
+        </RadzenDataGridColumn>
+@*         <RadzenDataGridColumn TItem="IngredientMVVM" Property="APSMeasurement" Title="Amount Per Serving Measure">
+            <EditTemplate Context="ingredient">
+                <RadzenDropDown @bind-Value="ingredient.APSMeasurement" Data="@measurementsIE" TextProperty="APSMeasurement" ValueProperty="APSMeasurement" Style="width:100%; display: block;" />
+            </EditTemplate>
+        </RadzenDataGridColumn> *@
+
+@*         <RadzenDataGridColumn TItem="IngredientMVVM" Property="APSMeasurement" Title="Amount Per Serving Measure">
+            <EditTemplate Context="ingredient">
+                <RadzenDropDown @bind-Value="ingredient.APSMeasurement"
+                                Data="@measurementsIE"
+                                TextProperty="APSMeasurement"
+                                ValueProperty="MeasurementId"
+                                ValueChanged=""
+                                Style="width:100%; display: block;" />
+            </EditTemplate>
+        </RadzenDataGridColumn> *@
+
+        <RadzenDataGridColumn TItem="IngredientMVVM" Property="APSMeasurement" Title="Amount Per Serving Measure">
+        <EditTemplate Context="ingredient">
+                <RadzenAutoComplete Value=@ingredient.APSM Data=@measurementsIE TextProperty="APSMeasurement" Style="width: 13rem" InputAttributes="@(new Dictionary<string,object>(){ { "aria-label", "Amount Per Serving Measure" }})" />
+        </EditTemplate>
+        </RadzenDataGridColumn>
+
+@*         <RadzenDataGridColumn TItem="IngredientMVVM" Property="MeasurementName" Title="Amount Per Serving Measure">
+            <EditTemplate Context="ingredient">
+                <RadzenDropDown @bind-Value="ingredient.APSM" Data="@measurementsIE" TextProperty="MeasurementName" ValueProperty="MeasurementId" Name="MeasurementName" Style="width:100%; display: block;" />
+            </EditTemplate>
+        </RadzenDataGridColumn> *@
+
+
+        <RadzenDataGridColumn TItem="IngredientMVVM" Context="ingredient" Filterable="false" Sortable="false" TextAlign="TextAlign.Right" Frozen="true" FrozenPosition="FrozenColumnPosition.Right">
+            <Template Context="ingredient">
+                <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => EditRow(ingredient))" @onclick:stopPropagation="true">
+                </RadzenButton>
+                <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Variant="Variant.Flat" Shade="Shade.Lighter" Size="ButtonSize.Medium" class="my-1 ms-1" Click="@(args => DeleteRow(ingredient))" @onclick:stopPropagation="true">
+                </RadzenButton>
+            </Template>
+            <EditTemplate Context="ingredient">
+                <RadzenButton Icon="check" ButtonStyle="ButtonStyle.Success" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@((args) => SaveRow(ingredient))">
+                </RadzenButton>
+                <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" class="my-1 ms-1" Click="@((args) => CancelEdit(ingredient))">
+                </RadzenButton>
+                <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Variant="Variant.Flat" Shade="Shade.Lighter" Size="ButtonSize.Medium" class="my-1 ms-1" Click="@(args => DeleteRow(ingredient))">
+                </RadzenButton>
+            </EditTemplate>
+        </RadzenDataGridColumn>
+    </Columns>
+</RadzenDataGrid>
+
+
+
+@code {
+    bool isLoading = false;
+    int count;
+    RadzenDataGrid<IngredientMVVM> ingredientsGrid;
+
+    IEnumerable<IngredientMVVM> ingredients;
+
+    IEnumerable<IngredientMVVM> ingredientsMVVM;
+
+    IEnumerable<IngredientMVVM> ingredientsList = new List<IngredientMVVM>();
+
+    IngredientMVVM ingredientToInsert;
+    IngredientMVVM ingredientToUpdate;
+
+    IEnumerable<IngredientTypeDto> ingredientTypesIE = new List<IngredientTypeDto>();
+    IEnumerable<MeasurementDto> measurementsIE = new List<MeasurementDto>();
+    IEnumerable<ProductCategoryDto> productCategoriesIE = new List<ProductCategoryDto>();
+
+    List<KeyValuePair<int, string>> measurementsDropdown;
+    IList<int> measurementValues = new int[] { 1 };
+
+    IEnumerable<MeasurementDto> measurementList = new List<MeasurementDto>();
+
+
+    async Task LoadData(LoadDataArgs args)
+    {
+        List<MeasurementDto> mList = new List<MeasurementDto>();
+        mList = measurementsIE.ToList();
+        isLoading = true;
+
+        await Task.Yield();
+
+        var ing = await _ingredientService.GetAllIngredient();
+        var ingMVVM = ing.Select(ingredient => new IngredientMVVM
+            {
+                IngredientId = ingredient.IngredientId,
+                Name = ingredient.Name,
+                AmountPerServing = ingredient.AmountPerServing,
+                APSM = ingredient.APSM,
+                //MeasurementNameAPSM = mList.FirstOrDefault(m => m.MeasurementId == ingredient.APSM)?.MeasurementName
+                //APSMeasurement = mList.Where(x=>x.MeasurementId==ingredient.APSM)
+            });
+        var query = ingMVVM.AsQueryable();
+        count = query.Count();
+        ingredients = query.Skip(args.Skip.Value).Take(args.Top.Value).ToList();
+        isLoading = false;
+    }
+
+    // void OnChange(dynamic args)
+    // {
+    //     companyName = args;
+    // }
+
+    // async Task LoadData(LoadDataArgs args)
+    // {
+    //     isLoading = true;
+
+    //     await Task.Yield();
+
+    //     var ing = await _ingredientService.GetAllIngredient();
+    //     var ingMVVM = ing.Select(ingredient => new IngredientMVVM
+    //         {
+    //             IngredientId = ingredient.IngredientId,
+    //             Name = ingredient.Name,
+    //             AmountPerServing = ingredient.AmountPerServing,
+    //             APSM = ingredient.APSM,
+    //             APSMeasurement = measurementsIE.FirstOrDefault(m => m.MeasurementId == ingredient.APSM)
+    //         });
+
+    //     var query = ingMVVM.AsQueryable();
+    //     count = query.Count();
+    //     ingredients = query.Skip(args.Skip.Value).Take(args.Top.Value).ToList();
+
+    //     isLoading = false;
+    // }
+
+    private void GetMeasurementId(ChangedEventArgs e)
+    {
+        var res = measurementsIE.Where(x => x.MeasurementName == e.ToString());
+
+    }
+
+    private async Task PassComponents()
+    {
+
+        measurementsIE = MapMeasurementsToDropdown(measurementValues);
+    }
+
+    private IEnumerable<MeasurementDto> MapMeasurementsToDropdown(IList<int> measurementValues)
+    {
+        return measurementList
+            .Where(x => measurementValues.Contains(x.MeasurementId))
+            .ToList();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        ingredientTypesIE = await _localstorage.GetAllIngredientTypesFromLocalStorage();
+        measurementsIE = await _localstorage.GetAllMeasurementsFromLocalStorage();
+        productCategoriesIE = await _localstorage.GetAllProductCategoriesFromLocalStorage();
+
+        //measurementsDropdown = MapMeasurementsToDropdown(measurementsIE);
+    }
+
+    // public List<KeyValuePair<int, string>> MapMeasurementsToDropdown(IEnumerable<MeasurementDto> measurements)
+    // {
+    //     return measurements.Select(m => new KeyValuePair<int, string>(m.MeasurementId, m.MeasurementName)).ToList();
+    // }
+
+
+
+    async Task Reset()
+    {
+        ingredientToInsert = null;
+        ingredientToUpdate = null;
+        ingredientsGrid.Reset(true);
+        await ingredientsGrid.FirstPage(true);
+    }
+
+
+
+    async Task EditRow(IngredientMVVM ingredient)
+    {
+        ingredientToUpdate = ingredient;
+        await ingredientsGrid.EditRow(ingredient);
+    }
+
+    void OnUpdateRow(IngredientMVVM ingredient)
+    {
+        Reset();
+        IngredientDto ingredientDto = new IngredientDto();
+        if(ingredient != null)
+        {
+            ingredientDto.IngredientId = ingredient.IngredientId;
+            ingredientDto.Name = ingredient.Name;
+            ingredientDto.AmountPerServing = ingredient.AmountPerServing;
+            ingredientDto.APSM = ingredient.APSM;
+        }
+        _ingredientService.UpdateIngredient(ingredientDto);
+    }
+
+    async Task SaveRow(IngredientMVVM ingredient)
+    {
+        await ingredientsGrid.UpdateRow(ingredient);
+    }
+
+    void CancelEdit(IngredientMVVM ingredient)
+    {
+        Reset();
+        ingredientsGrid.CancelEditRow(ingredient);
+
+        // var ingredientEntry = _ingredientService.Sel(ingredient);
+        // if (ingredientEntry.State == EntityState.Modified)
+        // {
+        //     ingredientEntry.CurrentValues.SetValues(ingredientEntry.OriginalValues);
+        //     ingredientEntry.State = EntityState.Unchanged;
+        // }
+    }
+
+    async Task DeleteRow(IngredientMVVM ingredient)
+    {
+        Reset();
+
+        if (ingredients.Contains(ingredient))
+        {
+            IngredientDto ingredientDto = new IngredientDto();
+            if (ingredient != null)
+            {
+                ingredientDto.IngredientId = ingredient.IngredientId;
+                ingredientDto.Name = ingredient.Name;
+                ingredientDto.AmountPerServing = ingredient.AmountPerServing;
+                ingredientDto.APSM = ingredient.APSM;
+            }
+            await _ingredientService.RemoveIngredient(ingredientDto);
+            await ingredientsGrid.Reload();
+        }
+        else
+        {
+            ingredientsGrid.CancelEditRow(ingredient);
+            await ingredientsGrid.Reload();
+        }
+    }
+
+    async Task InsertRow()
+    {
+        ingredientToInsert = new IngredientMVVM();
+        await ingredientsGrid.InsertRow(ingredientToInsert);
+    }
+
+    void OnCreateRow(IngredientMVVM ingredient)
+    {
+        IngredientDto ingredientDto = new IngredientDto();
+        if (ingredient != null)
+        {
+            ingredientDto.IngredientId = ingredient.IngredientId;
+            ingredientDto.Name = ingredient.Name;
+            ingredientDto.AmountPerServing = ingredient.AmountPerServing;
+            ingredientDto.APSM = ingredient.APSM;
+        }
+        _ingredientService.AddIngredient(ingredientDto);
+        ingredientToInsert = null;
+    }
+}

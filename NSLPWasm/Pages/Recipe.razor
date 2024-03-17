@@ -1,0 +1,121 @@
+﻿@page "/recipes"
+@using NSLPWasm.Component
+@using NSLPWasm.Component.RecipeComponent
+@using NSLPWasm.Dto
+@using NSLPWasm.Services.RecipeService
+@inject DialogService DialogService
+@inject IRecipeService _recipeService
+@inject ILocalStorageManager _localstorage
+@inject NotificationService NotificationService
+
+<style>
+   /*  .rz-grid-table {
+        width: unset;
+    } */
+
+    .rz-data-grid {
+        display: grid;
+    }
+</style>
+
+@if(isLoading == true)
+{
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.Center" Wrap="FlexWrap.Wrap" Class="rz-m-12" Gap="2rem">
+        <RadzenProgressBarCircular ShowValue="isLoading" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Large" Visible="isLoading">
+            <Template>Wait</Template>
+        </RadzenProgressBarCircular>
+    </RadzenStack>
+}
+else
+{
+    <RadzenButton ButtonStyle="ButtonStyle.Success" Icon="add_circle_outline" class="mt-2 mb-2" Text="Add Recipe" Click="@AddRecipe"/>
+    <RadzenDataGrid @ref="recipesGrid" AllowFiltering="false" AllowPaging="true" PageSize="5" AllowSorting="false"
+                    Data="@recipes" TItem="RecipeDto" IsLoading=@isLoading Responsive="true">
+        <Columns>
+            <RadzenDataGridColumn TItem="RecipeDto" Property="RecipeId" Title="Recipe ID" />
+            <RadzenDataGridColumn TItem="RecipeDto" Property="RecipeName" Title="Recipe Name">
+                <EditTemplate Context="recipe">
+                    <RadzenTextBox @bind-Value="recipe.RecipeName" Name="RecipeName" />
+                    <RadzenRequiredValidator Text="Recipe Name is required" Component="RecipeName" Popup="true" />
+                </EditTemplate>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="RecipeDto" Property="Hot" Title="Hot">
+                <EditTemplate Context="recipe">
+                    <RadzenCheckBox @bind-Value="recipe.Hot" Name="Hot" />
+                </EditTemplate>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="RecipeDto" Property="Cold" Title="Cold">
+                <EditTemplate Context="recipe">
+                    <RadzenCheckBox @bind-Value="recipe.Cold" Name="Cold" />
+                </EditTemplate>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="RecipeDto" Property="ProductCategoryId" Title="Product Category">
+                <EditTemplate Context="recipe">
+                    <RadzenDropDown @bind-Value="recipe.ProductCategoryId" Data="@productCategoriesIE" TextProperty="ProductCategoryName" ValueProperty="ProductCategoryId" />
+                </EditTemplate>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn Width="160px" TItem="RecipeDto" Property="RecipeId" Title="Recipe Details">
+                <Template Context="recipe">
+                    <RadzenButton ButtonStyle="ButtonStyle.Info" Variant="Variant.Flat" Shade="Shade.Lighter" Icon="pageview" class="m-1" Click=@(() => OpenRecipe(recipe)) Text="View Details" />
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+}
+
+@code {
+    bool isLoading = false;
+    int count;
+
+    RadzenDataGrid<RecipeDto> recipesGrid;
+    List<RecipeDto> recipes = new List<RecipeDto>();
+
+    IEnumerable<ProductCategoryDto> productCategoriesIE = new List<ProductCategoryDto>();
+
+    async Task OpenRecipe(RecipeDto selected)
+    {
+        await DialogService.OpenAsync<DialogCardRecipe>($"View Recipe ",
+              new Dictionary<string, object>() { { "recipe", selected } },
+              new DialogOptions() { Width = "900px", Height = "720px" });
+    }
+
+    async Task AddRecipe()
+    {
+        RecipeDto newRecipe = new RecipeDto();
+        await DialogService.OpenAsync<AddRecipeComponent>($"Add Recipe ",
+              new Dictionary<string, object>() { { "recipe", newRecipe } },
+              new DialogOptions() { Width = "900px", Height = "720px" });
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        isLoading = true;
+        StateHasChanged();
+        await base.OnInitializedAsync();
+        productCategoriesIE = await _localstorage.GetAllProductCategoriesFromLocalStorage();
+
+        try
+        {
+            var res = await _recipeService.GetAllRecipe();
+            if (res.Count() != 0)
+            {
+                recipes = res;
+            }
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e.Message.ToString());
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    void ShowNotification(NotificationMessage message)
+    {
+        NotificationService.Notify(message);
+    }
+}

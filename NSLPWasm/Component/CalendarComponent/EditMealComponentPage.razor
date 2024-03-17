@@ -1,0 +1,158 @@
+﻿@using NSLPWasm.Dto
+@using NSLPWasm.Services.RecipeService
+@inject DialogService DialogService
+@inject IMenuTypeService _menuTypeService
+@inject IIngredientService _ingService
+@inject IRecipeService _recipeService
+@inject IMenuService _menuService
+@inject IMenuToIngredientOrRecipeService _mtiService
+@inject ILocalStorageManager _localstorage
+@inject NotificationService NotificationService
+@inject NavigationManager Navigation
+
+@if(isLoading==true)
+{
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.Center" Wrap="FlexWrap.Wrap" Class="rz-m-12" Gap="2rem">
+        <RadzenProgressBarCircular ShowValue="isLoading" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Large" Visible="isLoading">
+            <Template>Wait</Template>
+        </RadzenProgressBarCircular>
+    </RadzenStack>
+}
+else
+{
+    @if (menuTypeId == 1)
+    {
+        <RadzenTemplateForm TItem="MenuDto" Data="@bfmenu" Submit="@OnSubmit">
+
+            <BfMTIORComponent bfmtiors="BfMTIOR" />
+
+            <div class="row justify-content-center">
+                <div class="col-md-12 d-flex align-items-end justify-content-center" style="margin-top: 16px;">
+                    <RadzenButton ButtonType="ButtonType.Submit" Icon="save" Text="Save" style="margin-right: 20px;width:170px" />
+                </div>
+            </div>
+        </RadzenTemplateForm>
+    }
+    else if (menuTypeId == 2)
+    {
+        <RadzenTemplateForm TItem="MenuDto" Data="@lunchmenu" Submit="@OnSubmit">
+
+            <LunchMTIORComponent lunchmtiors="LunchMTIOR" />
+
+            <div class="row justify-content-center">
+                <div class="col-md-12 d-flex align-items-end justify-content-center" style="margin-top: 16px;">
+                    <RadzenButton ButtonType="ButtonType.Submit" Icon="save" Text="Save" style="margin-right: 20px;width:170px" />
+                </div>
+            </div>
+        </RadzenTemplateForm>
+    }
+}
+
+
+
+@code {
+    [Parameter]
+    public MealComponent MealComponent { get; set; }
+
+    MealComponent model = new MealComponent();
+
+    bool busy;
+    bool isLoading = false;
+
+    [Parameter]
+    public DateTime DateAssigned { get; set; }
+
+    [Parameter]
+    public int MenuTypeId { get; set; }
+
+    [Parameter]
+    public string MenuTypeName { get; set; }
+
+    int menuId;
+    int menuTypeId;
+    DateTime menuDate;
+
+    List<MenuToIngredientOrRecipeDto> BfMTIOR;
+    List<MenuToIngredientOrRecipeDto> LunchMTIOR;
+    MenuDto bfmenu = new MenuDto();
+    MenuDto lunchmenu = new MenuDto();
+
+    public MenuDto menuData;
+
+    protected override void OnParametersSet()
+    {
+        menuId = MealComponent.MenuId;
+        menuTypeId = MealComponent.MenuTypeId;
+        menuDate = MealComponent.DateAssigned;
+    }
+
+    protected async override Task OnInitializedAsync()
+    {
+        isLoading = true;
+        StateHasChanged();
+        try
+        {
+            OnParametersSet();
+            menuData = await _menuService.GetMenuByMenuId(menuId);
+
+            if (menuData.MenuTypeId == 1)
+            {
+                BfMTIOR = menuData.MenuToIngredientOrRecipes;
+            }
+            else if (menuData.MenuTypeId == 2)
+            {
+                LunchMTIOR = menuData.MenuToIngredientOrRecipes;
+            }
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e.Message);
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    async Task OnSubmit()
+    {
+        isLoading = true;
+        StateHasChanged();
+        try
+        {
+            if (menuData.MenuTypeId == 1)
+            {
+                menuData.MenuToIngredientOrRecipes = BfMTIOR;
+                bfmenu = menuData;
+                await _menuService.UpdateMenu(bfmenu);
+                ShowNotification(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Successfully added!", Duration = 4000 });
+                StateHasChanged();
+                Navigation.NavigateTo("/", forceLoad: true);
+            }
+            else if (menuData.MenuTypeId == 2)
+            {
+                menuData.MenuToIngredientOrRecipes = LunchMTIOR;
+                lunchmenu = menuData;
+                await _menuService.UpdateMenu(lunchmenu);
+                ShowNotification(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Successfully added!", Duration = 4000 });
+                StateHasChanged();
+                Navigation.NavigateTo("/", forceLoad: true);
+            }
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e.Message);
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    void ShowNotification(NotificationMessage message)
+    {
+        NotificationService.Notify(message);
+    }
+}

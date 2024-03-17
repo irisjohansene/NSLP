@@ -1,0 +1,155 @@
+﻿@using NSLPWasm.Dto
+@inject DialogService DialogService
+@inject IMenuService _menuService
+
+
+@if(isLoading == true)
+{
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.Center" Wrap="FlexWrap.Wrap" Class="rz-m-12" Gap="2rem">
+        <RadzenProgressBarCircular ShowValue="isLoading" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Large" Visible="isLoading">
+            <Template>Wait</Template>
+        </RadzenProgressBarCircular>
+    </RadzenStack>
+}
+else
+{
+    <RadzenScheduler @ref=@plan SlotRender=@OnSlotRender style="height: 768px;" TItem="MealComponent" Data=@plans StartProperty="DateAssigned" EndProperty="DateAssigned"
+                     TextProperty="MenuTypeName" SelectedIndex="0"
+                     SlotSelect=@OnSlotSelect AppointmentSelect=@OnMealComponentSelect AppointmentRender=@OnMealComponentRender>
+        <RadzenMonthView />
+        <RadzenYearView />
+    </RadzenScheduler>
+}
+
+
+@code {
+    bool isLoading = true;
+    IEnumerable<MenuDto> menuIE;
+
+    RadzenScheduler<MealComponent> plan;
+
+    IList<MealComponent> plans = new List<MealComponent>{};
+
+    protected override async Task OnInitializedAsync()
+    {
+        isLoading = true; // Set isLoading to true before fetching data
+        StateHasChanged();
+        await base.OnInitializedAsync();
+        try
+        {
+            var menus = await _menuService.GetAllMenu();
+            if (menus.Count() != 0)
+            {
+                var planValues = menus.Select(x => (x.MenuId, x.MenuTypeId, x.MenuDate)).ToList();
+                IList<MealComponent> mealComponents = new List<MealComponent>();
+
+                foreach (var menu in planValues)
+                {
+                    MealComponent meal = new MealComponent();
+                    meal.DateAssigned = menu.MenuDate;
+                    meal.MenuTypeId = menu.MenuTypeId;
+                    meal.MenuTypeName = GetMenuTypeName(menu.MenuTypeId);
+                    meal.MenuId = menu.MenuId;
+                    mealComponents.Add(meal);
+                }
+
+                plans = mealComponents;
+            }
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e.Message.ToString());
+        }
+        finally
+        {
+            isLoading = false; // Set isLoading back to false after data is loaded
+            StateHasChanged();
+        }
+    }
+
+    private string GetMenuTypeName(int menuTypeId)
+    {
+        switch (menuTypeId)
+        {
+            case 1:
+                return "Breakfast";
+            case 2:
+                return "Lunch";
+            case 3:
+                return "Snack";
+            case 4:
+                return "Supper";
+            default:
+                return "Unknown";
+        }
+    }
+
+    void OnSlotRender(SchedulerSlotRenderEventArgs args)
+    {
+        // Highlight today in month view
+        if (args.View.Text == "Month" && args.Start.Date == DateTime.Today)
+        {
+            args.Attributes["style"] = "background: rgba(255,220,40,.2);";
+        }
+
+        // Highlight working hours (9-18)
+        // if ((args.View.Text == "Week" || args.View.Text == "Day") && args.Start.Hour > 8 && args.Start.Hour < 19)
+        // {
+        //     args.Attributes["style"] = "background: rgba(255,220,40,.2);";
+        // }
+    }
+
+    async Task OnSlotSelect(SchedulerSlotSelectEventArgs args)
+    {
+
+        if (args.View.Text != "Year")
+        {
+            MealComponent data = await DialogService.OpenAsync<DialogCardAddMealToCalendar>("Add MealComponent",
+                new Dictionary<string, object> { { "DateAssigned", args.Start } },
+                new DialogOptions() { Width = "900px", Height = "720px" });
+
+            if (data != null)
+            {
+                plans.Add(data);
+                // Either call the Reload method or reassign the Data property of the Scheduler
+                await plan.Reload();
+            }
+        }
+    }
+
+    async Task OnMealComponentSelect(SchedulerAppointmentSelectEventArgs<MealComponent> args)
+    {
+        var copy = new MealComponent
+            {
+                DateAssigned = args.Data.DateAssigned,
+                MenuTypeName = args.Data.MenuTypeName,
+                MenuTypeId = args.Data.MenuTypeId,
+                MenuId = args.Data.MenuId
+            };
+
+        var data = await DialogService.OpenAsync<EditMealComponentPage>("Edit MealComponent", 
+            new Dictionary<string, object> { { "MealComponent", copy } },
+            new DialogOptions() { Width = "900px", Height = "720px" });
+
+        if (data != null)
+        {
+            // Update the mealplan
+            args.Data.DateAssigned = data.DateAssigned;
+            args.Data.MenuTypeName = data.MenuTypeName;
+            args.Data.MenuTypeId = data.MenuTypeId;
+            args.Data.MenuId = data.MenuId;
+        }
+
+        await plan.Reload();
+    }
+
+    void OnMealComponentRender(SchedulerAppointmentRenderEventArgs<MealComponent> args)
+    {
+        // Never call StateHasChanged in MealComponentRender - would lead to infinite loop
+
+        // if (args.Data.Me == "Breakfast")
+        // {
+        //     args.Attributes["style"] = "background: red";
+        // }
+    }
+}

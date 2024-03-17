@@ -1,0 +1,357 @@
+﻿@* @page "/calendar/viewdetails" *@
+@inject Radzen.DialogService dialogService
+@using NSLPWasm.Dto
+@using NSLPWasm.MVVM
+@using NSLPWasm.Services.RecipeService
+@inject IIngredientService _ingredientService
+@inject IRecipeToIngredientService _rtiService
+@inject IRecipeService _recipeService
+@inject ILocalStorageManager _localstorage
+@inject NotificationService NotificationService
+
+<style>
+    .rz-grid-table {
+        width: unset;
+    }
+
+    .rz-data-grid {
+        display: grid;
+    }
+</style>
+
+<RadzenText TextStyle="TextStyle.H6">Meal Form</RadzenText>
+
+<RadzenFieldset Text="Recipe Detail">
+    <RadzenStack Gap="1rem">
+        <RadzenRow AlignItems="AlignItems.Center">
+            <RadzenColumn Size="12" SizeMD="2">
+                <RadzenLabel Text="Recipe Name" Component="RecipeName" />
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="3">
+                <RadzenTextBox Style="width: 100%;" Name="RecipeName" @bind-Value="recipe.RecipeName" />
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="2">
+                <RadzenCheckBox @bind-Value="@recipe.Hot" Name="Hot" />
+                <RadzenLabel Text="Hot" Component="Hot" Style="margin-left: 8px; vertical-align: middle;" />
+                <RadzenCheckBox @bind-Value="@recipe.Cold" Name="Cold" />
+                <RadzenLabel Text="Cold" Component="Cold" Style="margin-left: 8px; vertical-align: middle;" />
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="3">
+                <RadzenDropDown @bind-Value="recipe.ProductCategoryId" Data="@productCategoriesIE" TextProperty="ProductCategoryName" ValueProperty="ProductCategoryId" />
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="2">
+                <RadzenButton Icon="check" ButtonStyle="ButtonStyle.Success" Variant="Variant.Flat" Size="ButtonSize.Medium" Text="Create Recipe" Click="@((args) => CreateRecipe(recipe))" Disabled=@isDisabled />
+            </RadzenColumn>
+        </RadzenRow>
+    </RadzenStack>
+</RadzenFieldset>
+
+<br />
+<br />
+
+<RadzenButton ButtonStyle="ButtonStyle.Success" Icon="add_circle_outline" class="mt-2 mb-2" Text="Add Ingredient" Click="@InsertRow" Disabled="@(rtiToInsert.Count() > 0 || recipe==null)" />
+<RadzenDataGrid @ref="rtiGrid" AllowAlternatingRows="false" AllowFiltering="false" AllowPaging="true" PageSize="5" AllowSorting="false" EditMode="DataGridEditMode.Single"
+                Data="@recipetoingredients" TItem="RecipeToIngredientDto" RowUpdate="@OnUpdateRow" RowCreate="@OnCreateRow" ColumnWidth="200px" IsLoading="@isLoading">
+    <Columns>
+        <RadzenDataGridColumn TItem="RecipeToIngredientDto" Property="RecipeToIngredientId" Title="ID" />
+        <RadzenDataGridColumn TItem="RecipeToIngredientDto" Property="RecipeId" Title="RecipeId" />
+        <RadzenDataGridColumn TItem="RecipeToIngredientDto" Property="IngredientId" Title="Ingredient" Width="280px">
+            <EditTemplate Context="rti">
+                <RadzenDropDown @bind-Value="rti.IngredientId" Data="@ingredientIE" TextProperty="Name" ValueProperty="IngredientId" Style="width:100%; display: block;" />
+            </EditTemplate>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn TItem="RecipeToIngredientDto" Property="Quantity" Title="Quantity">
+            <EditTemplate Context="rti">
+                <RadzenNumeric @bind-Value="rti.Quantity" Name="Quantity" />
+                <RadzenRequiredValidator Text="Quantity is required" Component="Quantity" Popup="true" />
+            </EditTemplate>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn TItem="RecipeToIngredientDto" Property="MeasurementId" Title="Measurement" Width="280px">
+            <EditTemplate Context="rti">
+                <RadzenDropDown @bind-Value="rti.MeasurementId" Data="@measurementsIE" TextProperty="MeasurementName" ValueProperty="MeasurementId" Style="width:100%; display: block;" />
+            </EditTemplate>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn TItem="RecipeToIngredientDto" Context="rti" Filterable="false" Sortable="false" TextAlign="TextAlign.Right" Frozen="true" FrozenPosition="FrozenColumnPosition.Right">
+            <Template Context="rti">
+                <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => EditRow(rti))" @onclick:stopPropagation="true">
+                </RadzenButton>
+                <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Variant="Variant.Flat" Shade="Shade.Lighter" Size="ButtonSize.Medium" class="my-1 ms-1" Click="@(args => DeleteRow(rti))" @onclick:stopPropagation="true">
+                </RadzenButton>
+            </Template>
+            <EditTemplate Context="rti">
+                <RadzenButton Icon="check" ButtonStyle="ButtonStyle.Success" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@((args) => SaveRow(rti))">
+                </RadzenButton>
+                <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" class="my-1 ms-1" Click="@((args) => CancelEdit(rti))">
+                </RadzenButton>
+                <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Variant="Variant.Flat" Shade="Shade.Lighter" Size="ButtonSize.Medium" class="my-1 ms-1" Click="@(args => DeleteRow(rti))">
+                </RadzenButton>
+            </EditTemplate>
+        </RadzenDataGridColumn>
+    </Columns>
+</RadzenDataGrid>
+
+@code {
+
+    [Parameter] public RecipeDto recipe { get; set; }
+
+    bool isLoading = false;
+    bool isDisabled = false;
+    int count;
+
+    RecipeDto newRecipe = new RecipeDto();
+
+    async Task CreateRecipe(RecipeDto newRecipe)
+    {
+        isLoading = true;
+        StateHasChanged();
+        try
+        {
+            var res = await _recipeService.AddRecipe(newRecipe);
+            if (res == null)
+            {
+                ShowNotification(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error While Saving!", Duration = 4000 });
+            }
+            else
+            {
+                ShowNotification(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Successfully created!", Duration = 4000 });
+                isDisabled = true;
+                recipe.RecipeId = res.Value;
+                isLoading = false;
+                StateHasChanged();
+
+            }
+        }
+        catch (Exception e)
+        {
+            // Handle any exceptions
+            Console.WriteLine(e.Message.ToString());
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    RadzenDataGrid<RecipeToIngredientDto> rtiGrid;
+    List<RecipeToIngredientDto> recipetoingredients = new List<RecipeToIngredientDto>();
+    List<RecipeToIngredientDto> rtiToInsert = new List<RecipeToIngredientDto>();
+    List<RecipeToIngredientDto> rtiToUpdate = new List<RecipeToIngredientDto>();
+
+    IEnumerable<MeasurementDto> measurementsIE = new List<MeasurementDto>();
+    IEnumerable<IngredientDto> ingredientIE;
+    IEnumerable<ProductCategoryDto> productCategoriesIE = new List<ProductCategoryDto>();
+
+    void Reset()
+    {
+        rtiToInsert.Clear();
+        rtiToUpdate.Clear();
+    }
+
+    void Reset(RecipeToIngredientDto rti)
+    {
+        rtiToInsert.Remove(rti);
+        rtiToUpdate.Remove(rti);
+    }
+
+    protected async override Task OnInitializedAsync()
+    {
+        isLoading = true;
+        StateHasChanged();
+        await base.OnInitializedAsync();
+        ingredientIE = await _ingredientService.GetAllIngredient();
+        measurementsIE = await _localstorage.GetAllMeasurementsFromLocalStorage();
+        productCategoriesIE = await _localstorage.GetAllProductCategoriesFromLocalStorage();
+
+        try
+        {
+            if (recipe.RecipeId != null)
+            {
+                var ing = await _rtiService.GetAllRecipeToIngredientByRecipeId(recipe.RecipeId);
+                if (ing.Count() != 0)
+                {
+                    recipetoingredients = ing;
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e.Message.ToString());
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    async Task EditRow(RecipeToIngredientDto rti)
+    {
+        rtiToUpdate.Add(rti);
+        await rtiGrid.EditRow(rti);
+    }
+
+    void OnUpdateRow(RecipeToIngredientDto rti)
+    {
+        isLoading = true;
+        StateHasChanged();
+        try
+        {
+            Reset(rti);
+            var ing = _rtiService.UpdateRecipeToIngredient(rti);
+            if (ing.Result == null)
+            {
+                ShowNotification(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error While Saving!", Duration = 4000 });
+            }
+            else
+            {
+                ShowNotification(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Successfully updated!", Duration = 4000 });
+            }
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e.Message.ToString());
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    async Task SaveRow(RecipeToIngredientDto rti)
+    {
+        isLoading = true;
+        StateHasChanged();
+        try
+        {
+            if (rti.RecipeId != 0)
+            {
+                await rtiGrid.UpdateRow(rti);
+                await Task.Delay(1000);
+                await UpdateData();
+                isLoading = false;
+                StateHasChanged();
+            }
+            else
+            {
+                ShowNotification(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Please create recipe first!", Duration = 4000 });
+            }
+
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e.Message.ToString());
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    void CancelEdit(RecipeToIngredientDto rti)
+    {
+        Reset(rti);
+        rtiGrid.CancelEditRow(rti);
+    }
+
+    async Task DeleteRow(RecipeToIngredientDto rti)
+    {
+        isLoading = true;
+        StateHasChanged();
+        try
+        {
+            Reset(rti);
+            if (recipetoingredients.Contains(rti))
+            {
+                var ing = await _rtiService.RemoveRecipeToIngredient(rti);
+
+                if (ing != null)
+                {
+                    ShowNotification(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Successfully deleted!", Duration = 4000 });
+                    recipetoingredients.Clear();
+                    await Task.Delay(1000);
+                    await UpdateData();
+                    await rtiGrid.Reload();
+                }
+            }
+            else
+            {
+                rtiGrid.CancelEditRow(rti);
+                await rtiGrid.Reload();
+            }
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e.Message.ToString());
+            ShowNotification(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error While Saving!", Duration = 4000 });
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+
+    async Task InsertRow()
+    {
+        var rti = new RecipeToIngredientDto();
+        rti.RecipeId = recipe.RecipeId;
+        rtiToInsert.Add(rti);
+        await rtiGrid.InsertRow(rti);
+        StateHasChanged();
+    }
+
+    async Task OnCreateRow(RecipeToIngredientDto rti)
+    {
+        isLoading = true;
+        StateHasChanged();
+        try
+        {
+            var newRti = await _rtiService.AddRecipeToIngredient(rti);
+            if (newRti == null)
+            {
+                ShowNotification(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error While Saving!", Duration = 4000 });
+            }
+            else
+            {
+                rtiToInsert.Remove(rti);
+                ShowNotification(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Successfully added!", Duration = 4000 });
+                isLoading = false;
+                StateHasChanged();
+
+            }
+        }
+        catch (Exception e)
+        {
+            // Handle any exceptions
+            Console.WriteLine(e.Message.ToString());
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+
+    public async Task UpdateData()
+    {
+        isLoading = true;
+        var ing = await _rtiService.GetAllRecipeToIngredientByRecipeId(recipe.RecipeId);
+        if (ing.Count() != 0)
+        {
+            recipetoingredients = ing;
+            await rtiGrid.Reload();
+        }
+        isLoading = false;
+        StateHasChanged();
+    }
+
+    void ShowNotification(NotificationMessage message)
+    {
+        NotificationService.Notify(message);
+    }
+}

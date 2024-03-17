@@ -1,0 +1,238 @@
+﻿@using NSLPWasm.Dto
+@using NSLPWasm.Services.RecipeService
+@inject IIngredientService _ingService
+@inject IRecipeService _recipeService
+@inject ILocalStorageManager _localstorage
+
+
+@if(isLoading==true)
+{
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.Center" Wrap="FlexWrap.Wrap" Class="rz-m-12" Gap="2rem">
+        <RadzenProgressBarCircular ShowValue="isLoading" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Large" Visible="isLoading">
+            <Template>Wait</Template>
+        </RadzenProgressBarCircular>
+    </RadzenStack>
+}
+else
+{
+    <RadzenButton Icon="add_circle_outline" style="margin-bottom: 10px" Text="Add Item" Click="@InsertRow" />
+    <RadzenDataGrid @ref="lunchmtiorsGrid" EditMode="DataGridEditMode.Single" Data="@lunchmtiors" TItem="MenuToIngredientOrRecipeDto" ColumnWidth="180px">
+        <Columns>
+            <RadzenDataGridColumn TItem="MenuToIngredientOrRecipeDto" Property="MenuToIngredientOrRecipeId" Title="ID" Width="70px" />
+            <RadzenDataGridColumn TItem="MenuToIngredientOrRecipeDto" Property="MenuId" Title="Menu ID" Width="70px" />
+            @{
+                bool isDisabledIng = false;
+                bool isDisabledRec = false;
+
+                <RadzenDataGridColumn TItem="MenuToIngredientOrRecipeDto" Property="IngredientId" Title="Ingredient">
+                    <EditTemplate Context="mti">
+                        @if (mti.IngredientId != null)
+                        {
+                            isDisabledIng = false;
+                            isDisabledRec = true;
+                        }
+                        <RadzenDropDown @bind-Value="mti.IngredientId" Data="@combinedLunchItems" TextProperty="Name" ValueProperty="Id" Style="width:100%; display: block;" Multiple=false AllowClear=true AllowFiltering=true Chips=true Disabled="@isDisabledIng" />
+                    </EditTemplate>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="MenuToIngredientOrRecipeDto" Property="RecipeId" Title="Recipe">
+                    <EditTemplate Context="mti">
+                        @if (mti.RecipeId != null)
+                        {
+                            isDisabledRec = false;
+                            isDisabledIng = true;
+                        }
+                        <RadzenDropDown @bind-Value="mti.RecipeId" Data="@recipeIE" TextProperty="RecipeName" ValueProperty="RecipeId" Style="width:100%; display: block;" Multiple=false AllowClear=true AllowFiltering=true Chips=true Disabled="@isDisabledRec" />
+
+                    </EditTemplate>
+                </RadzenDataGridColumn>
+            }
+            <RadzenDataGridColumn TItem="MenuToIngredientOrRecipeDto" Property="QuantityOffered" Title="Quantity Offered">
+                <EditTemplate Context="mti">
+                    <RadzenNumeric @bind-Value="mti.QuantityOffered" />
+                </EditTemplate>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="MenuToIngredientOrRecipeDto" Property="QtyMeasurement" Title="Quantity Measurement">
+                <EditTemplate Context="mti">
+                    <RadzenNumeric @bind-Value="mti.QtyMeasurement" />
+                </EditTemplate>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="MenuToIngredientOrRecipeDto" Property="QtyServed" Title="Quantity Served">
+                <EditTemplate Context="mti">
+                    <RadzenNumeric @bind-Value="mti.QtyServed" />
+                </EditTemplate>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="MenuToIngredientOrRecipeDto" Property="Leftovers" Title="Leftovers">
+                <EditTemplate Context="mti">
+                    <RadzenNumeric @bind-Value="mti.Leftovers" Disabled />
+                 </EditTemplate>
+             </RadzenDataGridColumn>
+             <RadzenDataGridColumn TItem="MenuToIngredientOrRecipeDto" Property="MeasurementId" Title="Measurement">
+                 <EditTemplate Context="mti">
+                     <RadzenDropDown @bind-Value="mti.MeasurementId" Data="@measurementIE" TextProperty="MeasurementName" ValueProperty="MeasurementId" Style="width:100%; display: block;" Multiple=false AllowClear=true AllowFiltering=true Chips=true />
+                 </EditTemplate>
+             </RadzenDataGridColumn>
+             <RadzenDataGridColumn TItem="MenuToIngredientOrRecipeDto" Property="Temperature" Title="Temperature">
+                 <EditTemplate Context="mti">
+                     <RadzenTextBox @bind-Value="mti.Temperature" Style="width:100%; display: block" />
+                 </EditTemplate>
+             </RadzenDataGridColumn>
+             <RadzenDataGridColumn TItem="MenuToIngredientOrRecipeDto" Property="Attendance" Title="Attendance">
+                 <EditTemplate Context="mti">
+                     <RadzenNumeric @bind-Value="mti.Attendance" />
+                 </EditTemplate>
+             </RadzenDataGridColumn>
+
+             <RadzenDataGridColumn TItem="MenuToIngredientOrRecipeDto" Context="mtior" Filterable="false" Sortable="false" TextAlign="TextAlign.Center" Width="120px">
+                 <Template Context="mtior">
+                     <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Class="m-1" Click="@(args => EditRow(mtior))" @onclick:stopPropagation="true">
+                     </RadzenButton>
+                 </Template>
+                 <EditTemplate Context="mtior">
+                     <RadzenButton Icon="check" ButtonStyle="ButtonStyle.Primary" Class="m-1" Click="@((args) => SaveRow(mtior))">
+                     </RadzenButton>
+                     <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Light" Class="m-1" Click="@((args) => CancelEdit(mtior))">
+                     </RadzenButton>
+                 </EditTemplate>
+             </RadzenDataGridColumn>
+             <RadzenDataGridColumn TItem="MenuToIngredientOrRecipeDto" Context="mtior" Filterable="false" Sortable="false" TextAlign="TextAlign.Center" Width="60px">
+                 <Template Context="mtior">
+                     <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Size="ButtonSize.Small" Class="m-1" Click="@(args => DeleteRow(mtior))" @onclick:stopPropagation="true">
+                     </RadzenButton>
+                 </Template>
+                 <EditTemplate Context="mtior">
+                     <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Size="ButtonSize.Small" Class="m-1" Click="@(args => DeleteRow(mtior))">
+                     </RadzenButton>
+                 </EditTemplate>
+             </RadzenDataGridColumn>
+         </Columns>
+     </RadzenDataGrid>
+}
+
+
+
+ @code {
+    bool isLoading = true;
+    RadzenDataGrid<MenuToIngredientOrRecipeDto> lunchmtiorsGrid;
+
+    [Parameter]
+    public List<MenuToIngredientOrRecipeDto> lunchmtiors { get; set; }
+
+    IEnumerable<IngredientDto> ingredientIE;
+    IEnumerable<RecipeDto> recipeIE;
+    IEnumerable<MeasurementDto> measurementIE;
+    IEnumerable<IngredientTypeDto> ingredientTypeIE;
+
+    IEnumerable<IngredientDto> ingLunch;
+    IEnumerable<object> combinedLunchItems; // Combined list of ingredients for lunch
+    List<int> selectedBreakfastItem = new List<int>(); // Selected items for lunch
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        var lunchmtiorsVar = lunchmtiors;
+    }
+
+    protected async override Task OnInitializedAsync()
+    {
+        isLoading = true; // Set isLoading to true before fetching data
+        StateHasChanged();
+
+        try
+        {
+            ingredientIE = await _ingService.GetAllIngredient();
+            recipeIE = await _recipeService.GetAllRecipe();
+            measurementIE = await _localstorage.GetAllMeasurementsFromLocalStorage();
+
+            if (ingredientIE.Count() != 0)
+            {
+                // Filter ingredients for lunch based on the ingredient type
+                ingLunch = GetIngredientsByIngredientAndMenuType(2);
+                // Concatenate filtered ingredients and recipes for lunch
+                combinedLunchItems = ingLunch.Select(x => new { Id = x.IngredientId, Name = x.Name }).ToList();
+            }
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e.Message.ToString());
+        }
+        finally
+        {
+            isLoading = false; // Set isLoading back to false after data is loaded
+            StateHasChanged();
+        }
+    }
+
+    private IEnumerable<IngredientDto> GetIngredientsByIngredientAndMenuType(int menuTypeId)
+    {
+        // Define your mapping between MenuType and IngredientType (This is just a placeholder, you need to fill in the actual logic)
+        Dictionary<int, List<int>> menuTypeToIngredientTypeMap = new Dictionary<int, List<int>>
+        {
+            { 1, new List<int> { 2, 4, 5, 6, 7, 8, 9, 10, 11, 13, 14 } }         // For MenuTypeId 2 (Lunch), associated IngredientTypeIds are 14
+        // Add mappings for other MenuTypes as needed
+        };
+        // Retrieve the associated IngredientTypeIds for the specified MenuType
+        if (menuTypeToIngredientTypeMap.TryGetValue(menuTypeId, out List<int> ingredientTypeIds))
+        {
+            // Filter ingredients based on the retrieved IngredientTypeIds
+            return ingredientIE.Where(ingredient => ingredientTypeIds.Contains(ingredient.IngredientTypeId));
+        }
+        else
+        {
+            return Enumerable.Empty<IngredientDto>(); // Return an empty list if no mapping is found for the MenuType
+        }
+    }
+
+    async Task EditRow(MenuToIngredientOrRecipeDto mtior)
+    {
+        await lunchmtiorsGrid.EditRow(mtior);
+    }
+
+    async Task SaveRow(MenuToIngredientOrRecipeDto mtior)
+    {
+        if (mtior == mtiorToInsert)
+        {
+            mtiorToInsert = null;
+        }
+
+        await lunchmtiorsGrid.UpdateRow(mtior);
+
+        lunchmtiors.Add(mtior);
+    }
+
+    void CancelEdit(MenuToIngredientOrRecipeDto mtior)
+    {
+        if (mtior == mtiorToInsert)
+        {
+            mtiorToInsert = null;
+        }
+
+        lunchmtiorsGrid.CancelEditRow(mtior);
+    }
+
+    async Task DeleteRow(MenuToIngredientOrRecipeDto mtior)
+    {
+        if (mtior == mtiorToInsert)
+        {
+            mtiorToInsert = null;
+        }
+
+        if (lunchmtiors.Contains(mtior))
+        {
+            lunchmtiors.Remove(mtior);
+            await lunchmtiorsGrid.Reload();
+        }
+        else
+        {
+            lunchmtiorsGrid.CancelEditRow(mtior);
+        }
+    }
+
+    MenuToIngredientOrRecipeDto mtiorToInsert;
+
+    async Task InsertRow()
+    {
+        var mtiorToAdd = new MenuToIngredientOrRecipeDto();
+        await lunchmtiorsGrid.InsertRow(mtiorToAdd);
+
+    }
+}

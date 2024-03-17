@@ -1,0 +1,54 @@
+﻿@inherits LayoutComponentBase
+@inject DialogService DialogService
+<RadzenComponents />
+<RadzenDialog />
+
+<div class="page">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <main>
+        <div class="top-row px-4">
+            <a href="https://docs.microsoft.com/aspnet/" target="_blank">About</a>
+        </div>
+
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+</div>
+
+
+@* <RadzenLayout>
+    <RadzenHeader>
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0">
+            <RadzenSidebarToggle Click="@(() => sidebarExpanded = !sidebarExpanded)" />
+            <RadzenLabel Text="NSLP" />
+        </RadzenStack>
+    </RadzenHeader>
+    <RadzenSidebar Responsive="false" Style="width: max-content">
+        <RadzenPanelMenu DisplayStyle="@(sidebarExpanded ? MenuItemDisplayStyle.IconAndText : MenuItemDisplayStyle.Icon)" ShowArrow="false">
+            <RadzenPanelMenuItem Text="Dashboard" Icon="home" Path="#" />
+            
+            <RadzenPanelMenuItem Text="Ingredients" Icon="description" Path="ingredients" />
+            <RadzenPanelMenuItem Text="Recipes" Icon="assignment" Path="recipes" />
+            <RadzenPanelMenuItem Text="Production" Icon="loyalty" Path="production" />
+            <RadzenPanelMenuItem Text="Purchasing" Icon="account_balance_wallet" Path="purchasing" />
+            
+            <RadzenPanelMenuItem Text="Docs" Icon="chrome_reader_mode" Path="docs" />
+        </RadzenPanelMenu>
+    </RadzenSidebar>
+    <RadzenBody>
+        <div class="rz-p-4">
+            @Body
+        </div>
+    </RadzenBody>
+    <RadzenFooter>
+        Footer
+    </RadzenFooter> 
+</RadzenLayout> *@
+
+@code {
+    bool sidebarExpanded = true;
+}

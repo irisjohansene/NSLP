@@ -1,0 +1,36 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.8.34330.188
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NSLPWasm", "NSLPWasm.csproj", "{A7A4B08F-6AC0-4EEA-BFB8-DC875A72BB86}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NSLPWebApi", "..\NSLPWebApi\NSLPWebApi.csproj", "{00BAE2D9-8CA1-47C3-9B5E-A46545BE441C}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{84E84027-7D1E-48A0-839E-B3A6E1D8990D}"
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A7A4B08F-6AC0-4EEA-BFB8-DC875A72BB86}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A7A4B08F-6AC0-4EEA-BFB8-DC875A72BB86}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A7A4B08F-6AC0-4EEA-BFB8-DC875A72BB86}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A7A4B08F-6AC0-4EEA-BFB8-DC875A72BB86}.Release|Any CPU.Build.0 = Release|Any CPU
+		{00BAE2D9-8CA1-47C3-9B5E-A46545BE441C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{00BAE2D9-8CA1-47C3-9B5E-A46545BE441C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{00BAE2D9-8CA1-47C3-9B5E-A46545BE441C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{00BAE2D9-8CA1-47C3-9B5E-A46545BE441C}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {01F98A5C-17BD-43C4-B7A4-B7A52E080BEF}
+	EndGlobalSection
+EndGlobal
